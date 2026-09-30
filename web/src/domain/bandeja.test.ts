@@ -21,6 +21,7 @@ function oferta(cambios: Partial<Oferta> = {}): Oferta {
     estado: "nueva",
     estado_actualizado: null,
     notas: null,
+    carta: null,
     ...cambios,
   };
 }

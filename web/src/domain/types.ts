@@ -30,6 +30,7 @@ export interface Oferta {
   estado: Estado;
   estado_actualizado: string | null;
   notas: string | null;
+  carta: string | null;
 }
 
 // ─── RESPUESTAS DE LA API ───

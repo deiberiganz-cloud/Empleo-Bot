@@ -1,3 +1,4 @@
+import { DetalleOferta } from "../components/DetalleOferta";
 import { FiltrosBandeja } from "../components/FiltrosBandeja";
 import { OfertaCard } from "../components/OfertaCard";
 import { useBandeja } from "../hooks/useBandeja";
@@ -54,7 +55,12 @@ export function BandejaPage() {
           <>
             <section className="lista" aria-label="Ofertas">
               {bandeja.visibles.map((oferta) => (
-                <OfertaCard key={oferta.id} oferta={oferta} onCambiarEstado={bandeja.cambiarEstado} />
+                <OfertaCard
+                  key={oferta.id}
+                  oferta={oferta}
+                  onCambiarEstado={bandeja.cambiarEstado}
+                  onAbrir={bandeja.abrirOferta}
+                />
               ))}
             </section>
             {bandeja.visibles.length === 0 && <p className="aviso">{VACIO[bandeja.estado]}</p>}
@@ -69,6 +75,16 @@ export function BandejaPage() {
           </>
         )}
       </main>
+
+      {/* Panel de detalle (carta y notas) */}
+      {bandeja.ofertaAbierta && (
+        <DetalleOferta
+          key={bandeja.ofertaAbierta.id}
+          oferta={bandeja.ofertaAbierta}
+          onCerrar={bandeja.cerrarOferta}
+          onCambiarEstado={bandeja.cambiarEstado}
+        />
+      )}
     </div>
   );
 }

@@ -66,10 +66,16 @@ describe('OfertasManager', () => {
 describe('API /api/ofertas', () => {
     let servidor
     let base
+    // Claude de mentira: devuelve una carta fija, o falla si el título dice "falla".
+    const escribirCartaFalsa = async oferta => {
+        if (oferta.titulo.includes('falla')) throw new Error('Claude tardó demasiado en responder')
+        return `Carta para ${oferta.titulo}`
+    }
     beforeEach(async () => {
         const manager = new OfertasManager(conectarDB(':memory:'))
         manager.guardar(ofertaDePrueba())
-        servidor = crearApp(manager).listen(0)
+        manager.guardar(ofertaDePrueba({ url: 'https://ejemplo.com/falla', titulo: 'Oferta que falla' }))
+        servidor = crearApp(manager, escribirCartaFalsa).listen(0)
         await new Promise(resolve => servidor.once('listening', resolve))
         base = `http://localhost:${servidor.address().port}/api/ofertas`
     })
@@ -87,7 +93,7 @@ describe('API /api/ofertas', () => {
         const { codigo, cuerpo } = await pedir('')
         assert.equal(codigo, 200)
         assert.equal(cuerpo.status, 'success')
-        assert.equal(cuerpo.payload.length, 1)
+        assert.equal(cuerpo.payload.length, 2)
     })
 
     test('GET con un estado inválido da 400', async () => {
@@ -105,5 +111,37 @@ describe('API /api/ofertas', () => {
         assert.equal(ok.cuerpo.payload.estado, 'me_interesa')
         assert.equal((await patchEstado(1, 'xx')).codigo, 400)
         assert.equal((await patchEstado(999, 'descartada')).codigo, 404)
+    })
+
+    const enviar = (metodo, ruta, cuerpo) => pedir(ruta, {
+        method: metodo, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo ?? {}),
+    })
+
+    test('POST /:id/carta escribe la carta con Claude y la guarda', async () => {
+        const { codigo, cuerpo } = await enviar('POST', '/1/carta')
+        assert.equal(codigo, 200)
+        assert.equal(cuerpo.payload.carta, 'Carta para Desarrollador Junior')
+        assert.equal((await pedir('/1')).cuerpo.payload.carta, 'Carta para Desarrollador Junior')
+    })
+
+    test('POST /:id/carta da 500 con el motivo si Claude falla, y 404 si no existe', async () => {
+        const { codigo, cuerpo } = await enviar('POST', '/2/carta')
+        assert.equal(codigo, 500)
+        assert.match(cuerpo.error, /tardó demasiado/)
+        assert.equal((await enviar('POST', '/999/carta')).codigo, 404)
+    })
+
+    test('PATCH /:id/carta guarda la carta editada y valida que sea texto', async () => {
+        const ok = await enviar('PATCH', '/1/carta', { carta: 'Mi versión' })
+        assert.equal(ok.codigo, 200)
+        assert.equal(ok.cuerpo.payload.carta, 'Mi versión')
+        assert.equal((await enviar('PATCH', '/1/carta', { carta: 123 })).codigo, 400)
+        assert.equal((await enviar('PATCH', '/1/carta', { carta: 'x'.repeat(10001) })).codigo, 400)
+    })
+
+    test('PATCH /:id/notas guarda las notas', async () => {
+        const ok = await enviar('PATCH', '/1/notas', { notas: 'Piden portfolio' })
+        assert.equal(ok.cuerpo.payload.notas, 'Piden portfolio')
+        assert.equal((await enviar('PATCH', '/999/notas', { notas: 'x' })).codigo, 404)
     })
 })

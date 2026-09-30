@@ -10,13 +10,15 @@ const RUTA_WEB = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '
 
 /**
  * Arma la app de Express sin ponerla a escuchar, así los tests la levantan aparte.
+ * @param manager el OfertasManager
+ * @param escribirCarta función async (oferta) => texto de la carta
  */
-export const crearApp = manager => {
+export const crearApp = (manager, escribirCarta) => {
     const app = express()
     app.use(express.json())
 
     app.get('/api/salud', (req, res) => res.json({ status: 'success', payload: 'ok' }))
-    app.use('/api/ofertas', crearOfertasRouter(manager))
+    app.use('/api/ofertas', crearOfertasRouter(manager, escribirCarta))
 
     if (fs.existsSync(RUTA_WEB)) app.use(express.static(RUTA_WEB))
 

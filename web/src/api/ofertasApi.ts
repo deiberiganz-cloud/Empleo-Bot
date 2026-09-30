@@ -20,6 +20,27 @@ export function listarOfertas(): Promise<Oferta[]> {
   return pedir<Oferta[]>(BASE);
 }
 
+/** Le pide a la API que Claude escriba la carta (tarda unos segundos). Devuelve la oferta con la carta. */
+export function escribirCartaOferta(id: number): Promise<Oferta> {
+  return pedir<Oferta>(`${BASE}/${id}/carta`, { method: "POST" });
+}
+
+export function guardarCartaOferta(id: number, carta: string): Promise<Oferta> {
+  return pedir<Oferta>(`${BASE}/${id}/carta`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ carta }),
+  });
+}
+
+export function guardarNotasOferta(id: number, notas: string): Promise<Oferta> {
+  return pedir<Oferta>(`${BASE}/${id}/notas`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ notas }),
+  });
+}
+
 export function cambiarEstadoOferta(id: number, estado: Estado): Promise<Oferta> {
   return pedir<Oferta>(`${BASE}/${id}/estado`, {
     method: "PATCH",

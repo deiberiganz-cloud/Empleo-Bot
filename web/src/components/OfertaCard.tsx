@@ -1,9 +1,11 @@
-import { accionesPara, nivelPuntaje } from "../domain/bandeja";
+import { nivelPuntaje } from "../domain/bandeja";
 import type { Estado, Oferta } from "../domain/types";
+import { AccionesOferta } from "./AccionesOferta";
 
 interface Props {
   oferta: Oferta;
   onCambiarEstado: (id: number, destino: Estado) => void;
+  onAbrir: (id: number) => void;
 }
 
 const ETIQUETA_TIPO: Record<string, string> = {
@@ -20,7 +22,7 @@ function fechaCorta(fecha: string): string {
   return dia && mes ? `${dia}/${mes}` : fecha;
 }
 
-export function OfertaCard({ oferta, onCambiarEstado }: Props) {
+export function OfertaCard({ oferta, onCambiarEstado, onAbrir }: Props) {
   const nivel = nivelPuntaje(oferta.puntaje);
   const datos = [oferta.empresa, oferta.fuente, oferta.ubicacion?.trim()].filter(Boolean).join(" · ");
 
@@ -33,7 +35,11 @@ export function OfertaCard({ oferta, onCambiarEstado }: Props) {
 
       <div className="oferta-card__cuerpo">
         {/* Título y datos */}
-        <h2 className="oferta-card__titulo">{oferta.titulo}</h2>
+        <h2 className="oferta-card__titulo">
+          <button type="button" className="oferta-card__abrir" onClick={() => onAbrir(oferta.id)}>
+            {oferta.titulo}
+          </button>
+        </h2>
         {datos && <p className="oferta-card__datos">{datos}</p>}
 
         {/* Etiquetas */}
@@ -41,6 +47,7 @@ export function OfertaCard({ oferta, onCambiarEstado }: Props) {
           {oferta.tipo && <span className="etiqueta">{ETIQUETA_TIPO[oferta.tipo] ?? oferta.tipo}</span>}
           {oferta.postular && !oferta.estafa && <span className="etiqueta etiqueta--recomendada">Recomendada</span>}
           {oferta.estafa && <span className="etiqueta etiqueta--estafa">⚠ Posible estafa</span>}
+          {oferta.carta && <span className="etiqueta">Carta lista</span>}
           <span className="oferta-card__fecha">Encontrada el {fechaCorta(oferta.encontrada)}</span>
         </div>
 
@@ -48,23 +55,7 @@ export function OfertaCard({ oferta, onCambiarEstado }: Props) {
         {oferta.motivo && <p className="oferta-card__motivo">{oferta.motivo}</p>}
 
         {/* Acciones */}
-        <div className="oferta-card__acciones">
-          <a className="boton boton--enlace" href={oferta.url} target="_blank" rel="noreferrer">
-            Ver oferta ↗
-          </a>
-          <div className="oferta-card__botones">
-            {accionesPara(oferta.estado).map((accion) => (
-              <button
-                key={accion.destino}
-                type="button"
-                className={accion.principal ? "boton boton--principal" : "boton"}
-                onClick={() => onCambiarEstado(oferta.id, accion.destino)}
-              >
-                {accion.etiqueta}
-              </button>
-            ))}
-          </div>
-        </div>
+        <AccionesOferta oferta={oferta} onCambiarEstado={onCambiarEstado} />
       </div>
     </article>
   );

@@ -346,6 +346,133 @@ button {
   }
 }
 
+/* El título de la tarjeta es un botón que abre el detalle (se ve como texto). */
+.oferta-card__abrir {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.oferta-card__abrir:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---- Panel de detalle ---- */
+
+.detalle-fondo {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: flex-end;
+  z-index: 10;
+}
+
+.detalle {
+  width: min(640px, 100%);
+  height: 100%;
+  overflow-y: auto;
+  background: var(--surface);
+  padding: 20px;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+}
+
+.detalle__encabezado {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.detalle__titulos {
+  flex: 1;
+  min-width: 0;
+}
+
+.detalle__cerrar {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.detalle__seccion {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* Labels en mayúsculas como en el login de Zerelle. */
+.detalle__subtitulo {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.detalle__botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.detalle__ayuda {
+  margin: 8px 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.detalle__error {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--status-critical-text);
+}
+
+.detalle__descripcion {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  white-space: pre-line;
+}
+
+.campo {
+  width: 100%;
+  min-height: 90px;
+  resize: vertical;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radio-boton);
+  padding: 14px 16px;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.campo::placeholder {
+  color: var(--text-muted);
+}
+
+.campo--carta {
+  min-height: 320px;
+}
+
+.boton:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* ---- Celular ---- */
 
 @media (max-width: 560px) {

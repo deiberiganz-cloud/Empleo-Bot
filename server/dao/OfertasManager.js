@@ -56,6 +56,29 @@ export class OfertasManager {
     }
 
     /**
+     * Guarda la carta de presentación de una oferta (la que escribió Claude o la editada).
+     * @returns la oferta actualizada, o null si no existe
+     */
+    guardarCarta(id, carta) {
+        return this.#actualizarCampo(id, 'carta', carta)
+    }
+
+    /**
+     * Guarda las notas propias sobre una oferta.
+     * @returns la oferta actualizada, o null si no existe
+     */
+    guardarNotas(id, notas) {
+        return this.#actualizarCampo(id, 'notas', notas)
+    }
+
+    // Solo se llama con nombres de columna fijos de esta clase, nunca con texto del usuario.
+    #actualizarCampo(id, columna, valor) {
+        const resultado = this.db.prepare(`UPDATE ofertas SET ${columna} = ? WHERE id = ?`).run(valor, id)
+        if (resultado.changes === 0) return null
+        return this.obtenerPorId(id)
+    }
+
+    /**
      * Guarda una oferta nueva. Si la url ya existe no hace nada (no pisa el estado ni las notas).
      * @returns true si la guardó, false si ya estaba
      */
