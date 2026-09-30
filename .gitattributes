@@ -1,0 +1,2 @@
+# Saltos de linea LF en todas las PCs (evita cambios fantasma entre Windows y otros sistemas)
+* text=auto eol=lf

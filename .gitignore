@@ -1,0 +1,7 @@
+# Datos personales: nunca van al repo
+data/
+perfil.md
+reporte.html
+.env
+
+node_modules/

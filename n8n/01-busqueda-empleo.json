@@ -1,0 +1,459 @@
+{
+  "id": "BuscaEmpleo0000001",
+  "name": "Empleo 1 - Búsqueda diaria",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Probar ahora",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "name": "Todos los días a las 9",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://remoteok.com/api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (empleo-bot personal)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "RemoteOK",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://remotive.com/api/remote-jobs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (empleo-bot personal)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Remotive",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        300,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://himalayas.app/jobs/api/search?country=AR&limit=100",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (empleo-bot personal)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Himalayas (acepta Argentina)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        300,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://www.workingnomads.com/api/exposed_jobs/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (empleo-bot personal)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Working Nomads",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        300,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://weworkremotely.com/remote-jobs.rss",
+        "options": {}
+      },
+      "name": "We Work Remotely (RSS)",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        300,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Una búsqueda por item: el nodo siguiente se ejecuta una vez por cada una.\nconst busquedas = ['desarrollador', 'react', 'node', 'soporte', 'atención al cliente', 'ecommerce', 'qa', 'automatización'];\nreturn busquedas.map(q => ({ json: { q } }));"
+      },
+      "name": "Búsquedas Get on Board",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://www.getonbrd.com/api/v0/search/jobs?query={{ encodeURIComponent($json.q) }}&per_page=50&remote=true&expand=%5B%22company%22%5D",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (empleo-bot personal)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Get on Board",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "numberInputs": 6
+      },
+      "name": "Juntar portales",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        760,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Convierte la respuesta de cada portal al mismo formato y aplica el prefiltro (0 tokens).\nconst limpiar = h => String(h || '').replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\\s+/g, ' ').trim();\nconst SENIOR = /\\b(senior|sr\\.?|semi ?senior|ssr|lead|staff|principal|manager|director|head of|architect|arquitect[oa]|jefe|gerente)\\b/i;\nconst INGLES = /(fluent|advanced|excellent|native|proficient|strong|professional|business|c1|c2|b2)[^.]{0,25}english|english[^.]{0,20}(fluen|advanced|c1|c2|b2|required|proficien)|ingl[eé]s[^.]{0,15}(avanzado|fluido|intermedio|conversacional|c1|c2|b2|excluyente)|\\(ingl[eé]s\\)/i;\nconst HISPANO = /spanish|español|espanol|latam|latin america|latinoam[eé]rica|argentina|south america|sudam[eé]rica|hispan/i;\n\nconst ofertas = [];\nfor (const { json: j } of $input.all()) {\n  if (j.legal) continue;\n  if (Array.isArray(j.jobs) && j['job-count'] !== undefined) {\n    for (const x of j.jobs) ofertas.push({ fuente: 'Remotive', titulo: x.title, empresa: x.company_name, url: x.url,\n      ubicacion: x.candidate_required_location, descripcion: limpiar(x.description), fecha: String(x.publication_date).slice(0, 10) });\n  } else if (Array.isArray(j.jobs)) {\n    for (const x of j.jobs) ofertas.push({ fuente: 'Himalayas', titulo: x.title, empresa: x.companyName, url: x.applicationLink || x.guid,\n      ubicacion: (x.locationRestrictions || []).join(', ') || 'Worldwide', descripcion: limpiar(`${x.excerpt} ${x.description}`), fecha: String(x.pubDate).slice(0, 10) });\n  } else if (Array.isArray(j.data)) {\n    for (const x of j.data) {\n      const a = x.attributes;\n      ofertas.push({ fuente: 'Get on Board', titulo: a.title, empresa: a.company?.data?.attributes?.name || '', url: x.links?.public_url,\n        ubicacion: `${a.remote_modality} ${(a.countries || []).join(', ')}`, descripcion: limpiar([a.description, a.functions, a.desirable].join(' ')),\n        fecha: new Date(a.published_at * 1000).toISOString().slice(0, 10) });\n    }\n  } else if (j.position) {\n    ofertas.push({ fuente: 'RemoteOK', titulo: j.position, empresa: j.company, url: j.url, ubicacion: j.location || 'Worldwide',\n      descripcion: limpiar(j.description), fecha: String(j.date).slice(0, 10) });\n  } else if (j.company_name && j.pub_date !== undefined) {\n    ofertas.push({ fuente: 'Working Nomads', titulo: j.title, empresa: j.company_name, url: j.url, ubicacion: j.location || 'Worldwide',\n      descripcion: limpiar(j.description), fecha: String(j.pub_date).slice(0, 10) });\n  } else if (j.link) {\n    const partes = String(j.title).split(': ');\n    ofertas.push({ fuente: 'We Work Remotely', titulo: partes.length > 1 ? partes.slice(1).join(': ') : j.title, empresa: partes.length > 1 ? partes[0] : '',\n      url: j.link, ubicacion: '', descripcion: limpiar(j.content || j.contentSnippet), fecha: String(j.isoDate).slice(0, 10) });\n  }\n}\n\nconst vistas = new Set();\nconst pasan = ofertas.filter(o => {\n  if (!o.url || vistas.has(o.url)) return false;\n  vistas.add(o.url);\n  const texto = `${o.titulo} ${o.ubicacion} ${o.descripcion}`;\n  if (SENIOR.test(o.titulo) || INGLES.test(texto)) return false;\n  return o.fuente === 'Get on Board' || HISPANO.test(texto);\n});\nreturn pasan.map(o => ({ json: o }));\n"
+      },
+      "name": "Normalizar y prefiltrar (0 tokens)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "mode": "once",
+        "options": {
+          "fileName": "entrada.json"
+        }
+      },
+      "name": "Pasar a archivo JSON",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1200,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "C:/Users/Admin/Desktop/empleo-bot/data/entrada.json",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "name": "Guardar entrada.json",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1420,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "command": "node C:/Users/Admin/Desktop/empleo-bot/evaluar.js"
+      },
+      "name": "Claude evalúa (suscripción)",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1640,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// evaluar.js imprime un resumen en JSON: lo convertimos en datos de n8n.\nconst r = JSON.parse($json.stdout);\nreturn [{ json: r }];"
+      },
+      "name": "Leer resumen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1860,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Probar ahora": {
+      "main": [
+        [
+          {
+            "node": "RemoteOK",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Remotive",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Himalayas (acepta Argentina)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Working Nomads",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "We Work Remotely (RSS)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Búsquedas Get on Board",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Todos los días a las 9": {
+      "main": [
+        [
+          {
+            "node": "RemoteOK",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Remotive",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Himalayas (acepta Argentina)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Working Nomads",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "We Work Remotely (RSS)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Búsquedas Get on Board",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RemoteOK": {
+      "main": [
+        [
+          {
+            "node": "Juntar portales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remotive": {
+      "main": [
+        [
+          {
+            "node": "Juntar portales",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Himalayas (acepta Argentina)": {
+      "main": [
+        [
+          {
+            "node": "Juntar portales",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Working Nomads": {
+      "main": [
+        [
+          {
+            "node": "Juntar portales",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "We Work Remotely (RSS)": {
+      "main": [
+        [
+          {
+            "node": "Juntar portales",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Búsquedas Get on Board": {
+      "main": [
+        [
+          {
+            "node": "Get on Board",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get on Board": {
+      "main": [
+        [
+          {
+            "node": "Juntar portales",
+            "type": "main",
+            "index": 5
+          }
+        ]
+      ]
+    },
+    "Juntar portales": {
+      "main": [
+        [
+          {
+            "node": "Normalizar y prefiltrar (0 tokens)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar y prefiltrar (0 tokens)": {
+      "main": [
+        [
+          {
+            "node": "Pasar a archivo JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pasar a archivo JSON": {
+      "main": [
+        [
+          {
+            "node": "Guardar entrada.json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar entrada.json": {
+      "main": [
+        [
+          {
+            "node": "Claude evalúa (suscripción)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude evalúa (suscripción)": {
+      "main": [
+        [
+          {
+            "node": "Leer resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "pinData": {}
+}
