@@ -1,0 +1,365 @@
+/* ---- Tokens de diseño: el único lugar con colores (paleta de Zerelle) ----
+   Todos los textos cumplen contraste AA (4,5:1) sobre --page y --surface.
+   El dorado (--accent) va solo en barras y detalles: como texto no llega al contraste. */
+
+:root {
+  color-scheme: light;
+  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+
+  --page: #fafafa;
+  --surface: #ffffff;
+  --text-primary: #1a1a1a;
+  --text-secondary: #666666;
+  --text-muted: #737373;
+  --border: #e0e0e0;
+  --accent: #d4af37;
+
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-critical: #d03b3b;
+  --status-good-text: #006300;
+  --status-warning-text: #92660c;
+  --status-critical-text: #d03b3b;
+
+  --radio-tarjeta: 15px;
+  --radio-boton: 8px;
+  --sombra-tarjeta: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text-primary);
+}
+
+a {
+  color: var(--text-primary);
+  text-underline-offset: 2px;
+}
+
+button {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+
+/* ---- Página ---- */
+
+.pagina {
+  min-height: 100svh;
+}
+
+.encabezado {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 20px 16px 16px;
+  text-align: center;
+}
+
+.encabezado__marca {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 4px;
+}
+
+.encabezado__subtitulo {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.contenido {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+/* ---- Filtros ---- */
+
+.filtros {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.pestanas {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+}
+
+.pestanas__boton {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  border-top: 3px solid transparent;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+/* Pestaña activa: texto negro y la barra dorada de Zerelle arriba. */
+.pestanas__boton[aria-pressed="true"] {
+  color: var(--text-primary);
+  border-top-color: var(--accent);
+  font-weight: 600;
+}
+
+.pestanas__conteo {
+  display: inline-block;
+  min-width: 22px;
+  padding: 1px 6px;
+  margin-left: 4px;
+  border-radius: 10px;
+  background: var(--page);
+  border: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+  color: var(--surface);
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+/* ---- Tarjeta de oferta ---- */
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.oferta-card {
+  display: flex;
+  gap: 14px;
+  background: var(--surface);
+  border-radius: var(--radio-tarjeta);
+  box-shadow: var(--sombra-tarjeta);
+  padding: 16px;
+}
+
+.oferta-card__puntaje {
+  flex: 0 0 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.oferta-card__puntaje--alto {
+  border-color: var(--status-good);
+  color: var(--status-good-text);
+}
+
+.oferta-card__puntaje--medio {
+  border-color: var(--status-warning);
+  color: var(--status-warning-text);
+}
+
+.oferta-card__cuerpo {
+  flex: 1;
+  min-width: 0;
+}
+
+.oferta-card__titulo {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.oferta-card__datos {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.oferta-card__etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.etiqueta {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2px 10px;
+}
+
+.etiqueta--recomendada {
+  border-color: var(--status-good);
+  color: var(--status-good-text);
+}
+
+.etiqueta--estafa {
+  border-color: var(--status-critical);
+  color: var(--status-critical-text);
+}
+
+.oferta-card__fecha {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.oferta-card__motivo {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.oferta-card__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.oferta-card__botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---- Botones ---- */
+
+.boton {
+  border: 1px solid var(--text-primary);
+  background: transparent;
+  color: var(--text-primary);
+  border-radius: var(--radio-boton);
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.boton--principal {
+  background: var(--text-primary);
+  color: var(--surface);
+}
+
+.boton--enlace {
+  border-color: var(--border);
+}
+
+.boton-texto {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-primary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ---- Avisos ---- */
+
+.aviso {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  padding: 24px 16px;
+  color: var(--text-secondary);
+}
+
+.aviso--suave {
+  display: block;
+  padding: 16px;
+  font-size: 14px;
+}
+
+.aviso--error {
+  color: var(--status-critical-text);
+}
+
+.aviso--error p {
+  margin: 0;
+}
+
+.spinner {
+  width: 22px;
+  height: 22px;
+  border: 3px solid var(--border);
+  border-top-color: var(--text-primary);
+  border-radius: 50%;
+  animation: girar 0.8s linear infinite;
+}
+
+@keyframes girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- Celular ---- */
+
+@media (max-width: 560px) {
+  .oferta-card {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .oferta-card__acciones {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .oferta-card__botones .boton {
+    flex: 1;
+  }
+}
