@@ -1,0 +1,80 @@
+# Empleo Bot
+
+Asistente personal de búsqueda de empleo. Todos los días busca ofertas remotas en varios portales, **Claude las evalúa contra mi perfil**, y una app web me deja decidir, escribir la carta de presentación de cada una y seguir las postulaciones hasta el resultado.
+
+Lo construí para mi propia búsqueda de trabajo. Corre en mi PC y usa Claude a través de **Claude Code con la suscripción** (`claude -p`), así que no hay costos de API.
+
+| Bandeja: ofertas evaluadas por Claude | Seguimiento: postulaciones en marcha |
+|---|---|
+| ![Bandeja de ofertas](docs/bandeja.jpg) | ![Tablero de seguimiento](docs/seguimiento.jpg) |
+
+## Qué hace
+
+1. **Busca** (n8n, una vez por día): consulta 6 portales con API o RSS pública (Get on Board, RemoteOK, Remotive, Himalayas, Working Nomads y We Work Remotely).
+2. **Filtra sin IA**: descarta con reglas los puestos senior, los que piden inglés avanzado y las ofertas repetidas. De ~250 ofertas quedan ~75, y Claude solo ve esas.
+3. **Evalúa con Claude**, en lotes de 20: le pone a cada oferta un puntaje de 0 a 100, el tipo de puesto, si conviene postular, el motivo y si tiene señales de estafa.
+4. **Bandeja**: decido cuáles me interesan y cuáles descarto.
+5. **Carta de presentación**: Claude la escribe con mi perfil y lo que pide la oferta, sin inventar experiencia. La edito y la copio.
+6. **Seguimiento**: un tablero Me interesa → Postulé → Entrevista → Resultado, con la fecha de cada entrevista, un resumen (postulaciones de la semana y tasa de respuesta) y un **recordatorio a los 7 días sin respuesta**, con el mensaje de seguimiento ya escrito.
+
+## Cómo funciona
+
+```
+ n8n (todos los días)
+   │  6 portales ──► Normalizar + prefiltro (0 tokens) ──► data/entrada.json
+   ▼
+ evaluar.js ──► claude -p (lotes de 20) ──► SQLite (data/empleo.db)
+                                               ▲
+ React (web/) ◄──► API Express (server/) ──────┘
+                        └──► claude -p  (cartas y mensajes de seguimiento)
+```
+
+| Parte | Tecnología |
+|---|---|
+| Búsqueda programada | n8n 2.x (HTTP Request, RSS, Code, Merge, Execute Command) |
+| IA | Claude vía Claude Code (`claude -p`, sin herramientas ni sesión guardada) |
+| API | Node.js 24 + Express 5 + `node:sqlite` (SQLite sin dependencias externas) |
+| Frontend | React 19 + TypeScript + Vite + TanStack Query |
+| Tests | `node:test` (API) y Vitest + Testing Library (frontend) |
+
+## Decisiones de diseño
+
+- **Filtro barato antes que IA cara.** Las reglas (regex) sacan lo que seguro no sirve, y Claude evalúa solo el resto. Se manda en lotes de 20 y no en 76 llamadas, y las ofertas ya vistas no se vuelven a evaluar.
+- **Una decisión es más estable que un número.** El puntaje de Claude varía entre corridas, así que además le pido un `postular: true/false`. La Bandeja usa esa decisión.
+- **Honestidad en las cartas.** El prompt prohíbe inventar experiencia y exagerar el nivel de inglés: lo que falta se nombra como algo en aprendizaje.
+- **Inyección de dependencias para testear sin gastar.** El router recibe el manager de datos y los "escritores" de texto. En los tests se usan una base en memoria y un Claude de mentira.
+- **Una sola forma de guardar.** `evaluar.js` (el bot) y la API usan el mismo `OfertasManager`. Si una oferta ya existe (misma url), no se pisa: se conservan su estado, sus notas y su carta.
+- **Migraciones sin perder datos.** Las columnas nuevas se agregan con `ALTER TABLE` al arrancar, solo si faltan.
+- **Cambios optimistas en la UI.** La tarjeta cambia de columna al instante y vuelve atrás si la API falla.
+- **Accesibilidad.** Colores con contraste AA, el estado nunca se comunica solo con color, y el panel de detalle se navega con teclado (foco y Escape).
+- **Privacidad.** Mis datos (`data/`, `perfil.md`) nunca entran al repo. El perfil de ejemplo está en `perfil.example.md`.
+
+## Cómo correrlo
+
+Requisitos: Node.js 24+, [Claude Code](https://claude.com/claude-code) con sesión iniciada y, para la búsqueda diaria, n8n 2.x.
+
+```bash
+# 1. Perfil: copiar el ejemplo y completarlo con los datos propios
+cp perfil.example.md perfil.md
+
+# 2. API (sirve también la app compilada) en http://localhost:3001
+cd server && npm install && npm run dev
+
+# 3. App web (solo la primera vez o después de cambios)
+cd web && npm install && npm run build
+```
+
+**Búsqueda diaria con n8n:** importar `n8n/01-busqueda-empleo.json` (`n8n import:workflow --input=...`) y ajustar las rutas de los nodos "Guardar entrada.json" y "Claude evalúa" a la carpeta del proyecto. Hay que iniciar n8n con `NODES_EXCLUDE=[]`, para habilitar el nodo Execute Command, y con `N8N_RESTRICT_FILE_ACCESS_TO=<carpeta del proyecto>`.
+
+**Probar la búsqueda sin n8n:** `node n8n/probar-sin-n8n.js && node evaluar.js`.
+
+## Tests
+
+```bash
+cd server && npm test   # API, manager, migraciones y escritores de texto
+cd web && npm test      # filtros, tablero, tarjetas y panel de detalle
+```
+
+## Autor
+
+Deiber Rodríguez · [LinkedIn](https://linkedin.com/in/deiber-rodriguez-4b4872383) · [GitHub](https://github.com/deiberiganz-cloud)
