@@ -1,0 +1,15 @@
+{
+  "name": "empleo-bot",
+  "version": "1.0.0",
+  "description": "Scripts que corre n8n: evaluar ofertas con Claude y leer alertas de Gmail",
+  "private": true,
+  "scripts": {
+    "alertas": "node n8n/leer-alertas.js",
+    "test": "node --test n8n/*.test.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "imapflow": "^2.2.1",
+    "mailparser": "^3.9.33"
+  }
+}

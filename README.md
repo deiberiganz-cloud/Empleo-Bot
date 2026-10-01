@@ -10,7 +10,7 @@ Lo construí para mi propia búsqueda de trabajo. Corre en mi PC y usa Claude a 
 
 ## Qué hace
 
-1. **Busca** (n8n, una vez por día): consulta 6 portales con API o RSS pública (Get on Board, RemoteOK, Remotive, Himalayas, Working Nomads y We Work Remotely).
+1. **Busca** (n8n, una vez por día): consulta 6 portales con API o RSS pública (Get on Board, RemoteOK, Remotive, Himalayas, Working Nomads y We Work Remotely) y lee de Gmail las alertas de empleo de LinkedIn.
 2. **Filtra sin IA**: descarta con reglas los puestos senior, los que piden inglés avanzado y las ofertas repetidas. De ~250 ofertas quedan ~75, y Claude solo ve esas.
 3. **Evalúa con Claude**, en lotes de 20: le pone a cada oferta un puntaje de 0 a 100, el tipo de puesto, si conviene postular, el motivo y si tiene señales de estafa.
 4. **Bandeja**: decido cuáles me interesan y cuáles descarto.
@@ -21,7 +21,7 @@ Lo construí para mi propia búsqueda de trabajo. Corre en mi PC y usa Claude a 
 
 ```
  n8n (todos los días)
-   │  6 portales ──► Normalizar + prefiltro (0 tokens) ──► data/entrada.json
+   │  6 portales + alertas de Gmail ──► Normalizar + prefiltro (0 tokens) ──► data/entrada.json
    ▼
  evaluar.js ──► claude -p (lotes de 20) ──► SQLite (data/empleo.db)
                                                ▲
@@ -32,6 +32,7 @@ Lo construí para mi propia búsqueda de trabajo. Corre en mi PC y usa Claude a 
 | Parte | Tecnología |
 |---|---|
 | Búsqueda programada | n8n 2.x (HTTP Request, RSS, Code, Merge, Execute Command) |
+| Correo | IMAP de Gmail con `imapflow` + `mailparser` (solo lectura) |
 | IA | Claude vía Claude Code (`claude -p`, sin herramientas ni sesión guardada) |
 | API | Node.js 24 + Express 5 + `node:sqlite` (SQLite sin dependencias externas) |
 | Frontend | React 19 + TypeScript + Vite + TanStack Query |
@@ -47,7 +48,8 @@ Lo construí para mi propia búsqueda de trabajo. Corre en mi PC y usa Claude a 
 - **Migraciones sin perder datos.** Las columnas nuevas se agregan con `ALTER TABLE` al arrancar, solo si faltan.
 - **Cambios optimistas en la UI.** La tarjeta cambia de columna al instante y vuelve atrás si la API falla.
 - **Accesibilidad.** Colores con contraste AA, el estado nunca se comunica solo con color, y el panel de detalle se navega con teclado (foco y Escape).
-- **Privacidad.** Mis datos (`data/`, `perfil.md`) nunca entran al repo. El perfil de ejemplo está en `perfil.example.md`.
+- **Alertas por correo, nunca scraping.** LinkedIn prohíbe el scraping, así que se leen sus alertas de empleo por IMAP. El buzón se abre en modo solo lectura (no se marca nada como leído) y de cada link se guarda solo el id de la oferta: el link del correo trae tokens de inicio de sesión.
+- **Privacidad.** Mis datos (`data/`, `perfil.md`, `.env`) nunca entran al repo. El perfil de ejemplo está en `perfil.example.md`.
 
 ## Cómo correrlo
 
@@ -66,11 +68,14 @@ cd web && npm install && npm run build
 
 **Búsqueda diaria con n8n:** importar `n8n/01-busqueda-empleo.json` (`n8n import:workflow --input=...`) y ajustar las rutas de los nodos "Guardar entrada.json" y "Claude evalúa" a la carpeta del proyecto. Hay que iniciar n8n con `NODES_EXCLUDE=[]`, para habilitar el nodo Execute Command, y con `N8N_RESTRICT_FILE_ACCESS_TO=<carpeta del proyecto>`.
 
+**Alertas de Gmail (opcional):** `npm install` en la raíz y crear `.env` con `GMAIL_USUARIO` y `GMAIL_CLAVE_APP` (una [contraseña de aplicación](https://myaccount.google.com/apppasswords) de Google, que requiere la verificación en 2 pasos). Sin `.env`, la búsqueda sigue funcionando sin las alertas. Prueba: `node n8n/leer-alertas.js 7`.
+
 **Probar la búsqueda sin n8n:** `node n8n/probar-sin-n8n.js && node evaluar.js`.
 
 ## Tests
 
 ```bash
+npm test                # lectura de alertas de Gmail
 cd server && npm test   # API, manager, migraciones y escritores de texto
 cd web && npm test      # filtros, tablero, tarjetas y panel de detalle
 ```

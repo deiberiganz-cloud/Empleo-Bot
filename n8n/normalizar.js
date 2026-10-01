@@ -9,6 +9,8 @@ const MODALIDAD = { fully_remote: 'Remoto', remote_local: 'Remoto (con restricci
 const ofertas = [];
 for (const { json: j } of $input.all()) {
   if (j.legal) continue;
+  // Las alertas de Gmail (leer-alertas.js) ya llegan con el formato común.
+  if (j.fuente === 'LinkedIn (alerta)') { ofertas.push(j); continue; }
   if (Array.isArray(j.jobs) && j['job-count'] !== undefined) {
     for (const x of j.jobs) ofertas.push({ fuente: 'Remotive', titulo: x.title, empresa: x.company_name, url: x.url,
       ubicacion: x.candidate_required_location, descripcion: limpiar(x.description), fecha: String(x.publication_date).slice(0, 10) });
@@ -41,6 +43,7 @@ const pasan = ofertas.filter(o => {
   vistas.add(o.url);
   const texto = `${o.titulo} ${o.ubicacion} ${o.descripcion}`;
   if (SENIOR.test(o.titulo) || INGLES.test(texto)) return false;
-  return o.fuente === 'Get on Board' || HISPANO.test(texto);
+  // Get on Board y las alertas de LinkedIn ya vienen filtradas para Argentina/LATAM.
+  return o.fuente === 'Get on Board' || o.fuente === 'LinkedIn (alerta)' || HISPANO.test(texto);
 });
 return pasan.map(o => ({ json: o }));

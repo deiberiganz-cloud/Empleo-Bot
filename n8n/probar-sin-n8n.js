@@ -10,6 +10,7 @@ const Q=['desarrollador','react','node','soporte','atención al cliente','ecomme
  for(const q of Q) add(await j(`https://www.getonbrd.com/api/v0/search/jobs?query=${encodeURIComponent(q)}&per_page=50&remote=true&expand=%5B%22company%22%5D`));
  const rss=await (await fetch('https://weworkremotely.com/remote-jobs.rss',UA)).text();
  for(const m of rss.matchAll(/<item>([\s\S]*?)<\/item>/g)){const g=t=>(m[1].match(new RegExp(`<${t}>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?</${t}>`))||[])[1];add({title:g('title'),link:g('link'),content:g('description'),isoDate:g('pubDate')});}
+ try{add(JSON.parse(require('child_process').execFileSync('node',[__dirname+'/leer-alertas.js'],{encoding:'utf8'})));}catch(e){console.error('alertas de Gmail:',e.message);}
  const $input={all:()=>items};
  const out=eval('(()=>{'+fs.readFileSync(__dirname+'/normalizar.js','utf8')+'})()');
  console.log('crudos',items.length,'pasan',out.length);
