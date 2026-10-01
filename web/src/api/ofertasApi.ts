@@ -41,6 +41,20 @@ export function guardarNotasOferta(id: number, notas: string): Promise<Oferta> {
   });
 }
 
+/** Fecha y hora de la entrevista (texto de un input datetime-local) o null para borrarla. */
+export function guardarEntrevistaOferta(id: number, fecha: string | null): Promise<Oferta> {
+  return pedir<Oferta>(`${BASE}/${id}/entrevista`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fecha }),
+  });
+}
+
+/** Le pide a Claude un mensaje corto para preguntar cómo sigue el proceso. */
+export function escribirSeguimientoOferta(id: number): Promise<Oferta> {
+  return pedir<Oferta>(`${BASE}/${id}/seguimiento`, { method: "POST" });
+}
+
 export function cambiarEstadoOferta(id: number, estado: Estado): Promise<Oferta> {
   return pedir<Oferta>(`${BASE}/${id}/estado`, {
     method: "PATCH",

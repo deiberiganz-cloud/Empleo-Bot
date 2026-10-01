@@ -31,20 +31,33 @@ const ESQUEMA = `
                            CHECK (estado IN (${ESTADOS.map(e => `'${e}'`).join(', ')})),
         estado_actualizado TEXT,
         notas              TEXT,
-        carta              TEXT
+        carta              TEXT,
+        fecha_postulacion  TEXT,
+        fecha_entrevista   TEXT,
+        mensaje_seguimiento TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_ofertas_estado ON ofertas (estado);
 `
 
 // Columnas que se agregaron después de crear la tabla. Si la base es vieja, se suman
 // con ALTER TABLE sin perder los datos (una "migración" chica y a mano).
-const COLUMNAS_AGREGADAS = [{ nombre: 'carta', tipo: 'TEXT' }]
+const COLUMNAS_AGREGADAS = [
+    { nombre: 'carta', tipo: 'TEXT' },
+    { nombre: 'fecha_postulacion', tipo: 'TEXT' },
+    { nombre: 'fecha_entrevista', tipo: 'TEXT' },
+    { nombre: 'mensaje_seguimiento', tipo: 'TEXT' },
+]
 
 const migrar = db => {
     const existentes = new Set(db.prepare('PRAGMA table_info(ofertas)').all().map(columna => columna.name))
     for (const columna of COLUMNAS_AGREGADAS) {
         if (!existentes.has(columna.nombre)) db.exec(`ALTER TABLE ofertas ADD COLUMN ${columna.nombre} ${columna.tipo}`)
     }
+    // Las que ya estaban postuladas antes de existir fecha_postulacion: usamos la fecha del último cambio.
+    db.exec(`
+        UPDATE ofertas SET fecha_postulacion = estado_actualizado
+        WHERE fecha_postulacion IS NULL AND estado IN ('postulada', 'entrevista', 'oferta', 'rechazada')
+    `)
 }
 
 /**

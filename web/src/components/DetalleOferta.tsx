@@ -4,6 +4,7 @@ import type { Estado, Oferta } from "../domain/types";
 import { useCarta } from "../hooks/useCarta";
 import { useNotas } from "../hooks/useNotas";
 import { AccionesOferta } from "./AccionesOferta";
+import { SeccionEntrevista, SeccionMensajeSeguimiento } from "./SeccionesSeguimiento";
 
 interface Props {
   oferta: Oferta;
@@ -65,6 +66,10 @@ export function DetalleOferta({ oferta, onCerrar, onCambiarEstado }: Props) {
 
         {/* Acciones */}
         <AccionesOferta oferta={oferta} onCambiarEstado={onCambiarEstado} />
+
+        {/* Seguimiento y entrevista (solo cuando corresponde) */}
+        {oferta.estado === "postulada" && <SeccionMensajeSeguimiento oferta={oferta} />}
+        {(oferta.estado === "entrevista" || oferta.fecha_entrevista) && <SeccionEntrevista oferta={oferta} />}
 
         {/* Carta de presentación */}
         <section className="detalle__seccion" aria-labelledby="titulo-carta">

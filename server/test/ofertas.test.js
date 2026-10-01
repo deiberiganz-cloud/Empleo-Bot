@@ -58,6 +58,17 @@ describe('OfertasManager', () => {
         assert.equal(manager.cambiarEstado(999, 'postulada'), null)
     })
 
+    test('la fecha de postulación se anota la primera vez y no se pisa al ir y volver', () => {
+        manager.guardar(ofertaDePrueba())
+        const [{ id }] = manager.listar()
+        assert.equal(manager.obtenerPorId(id).fecha_postulacion, null)
+        const primera = manager.cambiarEstado(id, 'postulada').fecha_postulacion
+        assert.ok(primera)
+        manager.cambiarEstado(id, 'me_interesa')
+        manager.cambiarEstado(id, 'postulada')
+        assert.equal(manager.obtenerPorId(id).fecha_postulacion, primera)
+    })
+
     test('cambiarEstado rechaza un estado inválido', () => {
         assert.throws(() => manager.cambiarEstado(1, 'cualquiera'), /Estado inválido/)
     })
@@ -75,7 +86,10 @@ describe('API /api/ofertas', () => {
         const manager = new OfertasManager(conectarDB(':memory:'))
         manager.guardar(ofertaDePrueba())
         manager.guardar(ofertaDePrueba({ url: 'https://ejemplo.com/falla', titulo: 'Oferta que falla' }))
-        servidor = crearApp(manager, escribirCartaFalsa).listen(0)
+        servidor = crearApp(manager, {
+            escribirCarta: escribirCartaFalsa,
+            escribirSeguimiento: async oferta => `Seguimiento de ${oferta.titulo}`,
+        }).listen(0)
         await new Promise(resolve => servidor.once('listening', resolve))
         base = `http://localhost:${servidor.address().port}/api/ofertas`
     })
@@ -143,5 +157,19 @@ describe('API /api/ofertas', () => {
         const ok = await enviar('PATCH', '/1/notas', { notas: 'Piden portfolio' })
         assert.equal(ok.cuerpo.payload.notas, 'Piden portfolio')
         assert.equal((await enviar('PATCH', '/999/notas', { notas: 'x' })).codigo, 404)
+    })
+
+    test('PATCH /:id/entrevista guarda la fecha, la borra con null y rechaza fechas inválidas', async () => {
+        const ok = await enviar('PATCH', '/1/entrevista', { fecha: '2026-10-06T15:00' })
+        assert.equal(ok.codigo, 200)
+        assert.equal(ok.cuerpo.payload.fecha_entrevista, '2026-10-06T15:00')
+        assert.equal((await enviar('PATCH', '/1/entrevista', { fecha: null })).cuerpo.payload.fecha_entrevista, null)
+        assert.equal((await enviar('PATCH', '/1/entrevista', { fecha: 'mañana' })).codigo, 400)
+    })
+
+    test('POST /:id/seguimiento escribe el mensaje y lo guarda', async () => {
+        const { codigo, cuerpo } = await enviar('POST', '/1/seguimiento')
+        assert.equal(codigo, 200)
+        assert.equal(cuerpo.payload.mensaje_seguimiento, 'Seguimiento de Desarrollador Junior')
     })
 })

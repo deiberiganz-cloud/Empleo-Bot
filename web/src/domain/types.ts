@@ -31,6 +31,9 @@ export interface Oferta {
   estado_actualizado: string | null;
   notas: string | null;
   carta: string | null;
+  fecha_postulacion: string | null;
+  fecha_entrevista: string | null;
+  mensaje_seguimiento: string | null;
 }
 
 // ─── RESPUESTAS DE LA API ───
@@ -39,11 +42,10 @@ export type RespuestaApi<T> = { status: "success"; payload: T } | { status: "err
 
 // ─── BANDEJA ───
 
-/** Pestañas de la Bandeja, en el orden en que se muestran. */
+/** Pestañas de la Bandeja (decidir). Lo postulado se sigue en la pantalla Seguimiento. */
 export const PESTANAS: { estado: Estado; etiqueta: string }[] = [
   { estado: "nueva", etiqueta: "Nuevas" },
   { estado: "me_interesa", etiqueta: "Me interesan" },
-  { estado: "postulada", etiqueta: "Postuladas" },
   { estado: "descartada", etiqueta: "Descartadas" },
 ];
 

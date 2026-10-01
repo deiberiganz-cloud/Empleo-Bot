@@ -23,6 +23,9 @@ const oferta: Oferta = {
   estado_actualizado: null,
   notas: null,
   carta: null,
+  fecha_postulacion: null,
+  fecha_entrevista: null,
+  mensaje_seguimiento: null,
 };
 
 describe("OfertaCard", () => {

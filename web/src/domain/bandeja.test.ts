@@ -22,6 +22,9 @@ function oferta(cambios: Partial<Oferta> = {}): Oferta {
     estado_actualizado: null,
     notas: null,
     carta: null,
+    fecha_postulacion: null,
+    fecha_entrevista: null,
+    mensaje_seguimiento: null,
     ...cambios,
   };
 }
@@ -65,6 +68,8 @@ test("contarPorEstado cuenta cada estado", () => {
 test("accionesPara da los botones de cada pestaña", () => {
   expect(accionesPara("nueva").map((a) => a.destino)).toEqual(["descartada", "me_interesa", "postulada"]);
   expect(accionesPara("descartada").map((a) => a.destino)).toEqual(["nueva"]);
+  expect(accionesPara("postulada").map((a) => a.destino)).toEqual(["me_interesa", "rechazada", "entrevista"]);
+  expect(accionesPara("entrevista").map((a) => a.destino)).toEqual(["postulada", "rechazada", "oferta"]);
 });
 
 test("nivelPuntaje separa alto, medio y bajo", () => {

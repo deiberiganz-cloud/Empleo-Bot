@@ -5,7 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { conectarDB } from '../config/db.js'
-import { crearEscritorDeCartas } from '../services/cartas.js'
+import { crearEscritorDeCartas, crearEscritorDeSeguimiento } from '../services/cartas.js'
 
 const oferta = { titulo: 'Soporte Técnico', empresa: 'ACME', ubicacion: 'Remoto', descripcion: 'Atender tickets' }
 
@@ -30,17 +30,34 @@ test('el escritor de cartas falla si Claude devuelve una carta vacía', async ()
     await assert.rejects(escribir(oferta), /carta vacía/)
 })
 
-test('conectarDB agrega la columna "carta" a una base vieja sin perder datos', () => {
+test('conectarDB agrega las columnas nuevas a una base vieja sin perder datos', () => {
     const archivo = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'empleo-bot-')), 'vieja.db')
     const vieja = new DatabaseSync(archivo)
     vieja.exec(`CREATE TABLE ofertas (id INTEGER PRIMARY KEY, url TEXT NOT NULL UNIQUE, titulo TEXT NOT NULL,
-        encontrada TEXT NOT NULL, estado TEXT NOT NULL DEFAULT 'nueva', notas TEXT)`)
+        encontrada TEXT NOT NULL, estado TEXT NOT NULL DEFAULT 'nueva', estado_actualizado TEXT, notas TEXT)`)
     vieja.exec(`INSERT INTO ofertas (url, titulo, encontrada) VALUES ('https://x.com', 'Vieja', '2026-09-30')`)
     vieja.close()
 
     const db = conectarDB(archivo)
     const columnas = db.prepare('PRAGMA table_info(ofertas)').all().map(c => c.name)
-    assert.ok(columnas.includes('carta'))
+    for (const columna of ['carta', 'fecha_postulacion', 'fecha_entrevista', 'mensaje_seguimiento']) {
+        assert.ok(columnas.includes(columna), columna)
+    }
     assert.equal(db.prepare('SELECT titulo FROM ofertas').get().titulo, 'Vieja')
     db.close()
+})
+
+test('el escritor de seguimiento cuenta hace cuántos días se postuló', async () => {
+    let promptRecibido = ''
+    const escribir = crearEscritorDeSeguimiento({
+        leerPerfil: () => '# Perfil',
+        preguntar: async prompt => {
+            promptRecibido = prompt
+            return 'Hola, quería saber cómo sigue el proceso'
+        },
+    })
+    const haceOchoDias = new Date(Date.now() - 8 * 86400000).toISOString()
+    await escribir({ ...oferta, fecha_postulacion: haceOchoDias })
+    assert.match(promptRecibido, /Se postuló hace 8 días/)
+    assert.match(promptRecibido, /Sin presionar/)
 })

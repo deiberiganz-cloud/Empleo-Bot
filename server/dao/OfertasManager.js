@@ -48,9 +48,15 @@ export class OfertasManager {
      */
     cambiarEstado(id, estado) {
         if (!ESTADOS.includes(estado)) throw new Error(`Estado inválido: ${estado}`)
-        const resultado = this.db
-            .prepare('UPDATE ofertas SET estado = ?, estado_actualizado = ? WHERE id = ?')
-            .run(estado, new Date().toISOString(), id)
+        const ahora = new Date().toISOString()
+        // La primera vez que pasa a "postulada" se anota la fecha de postulación (para el
+        // recordatorio de 7 días y el resumen). Si después vuelve atrás y adelante, no se pisa.
+        const resultado = this.db.prepare(`
+            UPDATE ofertas
+            SET estado = ?, estado_actualizado = ?,
+                fecha_postulacion = CASE WHEN ? = 'postulada' THEN COALESCE(fecha_postulacion, ?) ELSE fecha_postulacion END
+            WHERE id = ?
+        `).run(estado, ahora, estado, ahora, id)
         if (resultado.changes === 0) return null
         return this.obtenerPorId(id)
     }
@@ -69,6 +75,22 @@ export class OfertasManager {
      */
     guardarNotas(id, notas) {
         return this.#actualizarCampo(id, 'notas', notas)
+    }
+
+    /**
+     * Guarda la fecha y hora de la entrevista (texto ISO), o null para borrarla.
+     * @returns la oferta actualizada, o null si no existe
+     */
+    guardarEntrevista(id, fecha) {
+        return this.#actualizarCampo(id, 'fecha_entrevista', fecha)
+    }
+
+    /**
+     * Guarda el mensaje de seguimiento que escribió Claude.
+     * @returns la oferta actualizada, o null si no existe
+     */
+    guardarSeguimiento(id, mensaje) {
+        return this.#actualizarCampo(id, 'mensaje_seguimiento', mensaje)
     }
 
     // Solo se llama con nombres de columna fijos de esta clase, nunca con texto del usuario.

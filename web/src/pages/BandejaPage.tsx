@@ -6,7 +6,6 @@ import { useBandeja } from "../hooks/useBandeja";
 const VACIO: Record<string, string> = {
   nueva: "No hay ofertas nuevas con estos filtros.",
   me_interesa: "Todavía no marcaste ninguna oferta con «Me interesa».",
-  postulada: "Todavía no marcaste ninguna postulación.",
   descartada: "No descartaste ninguna oferta.",
 };
 
@@ -14,14 +13,7 @@ export function BandejaPage() {
   const bandeja = useBandeja();
 
   return (
-    <div className="pagina">
-      {/* Encabezado con la marca */}
-      <header className="encabezado">
-        <h1 className="encabezado__marca">EMPLEO BOT</h1>
-        <p className="encabezado__subtitulo">Bandeja de ofertas</p>
-      </header>
-
-      <main className="contenido">
+    <>
         <FiltrosBandeja
           estado={bandeja.estado}
           onEstado={bandeja.setEstado}
@@ -74,8 +66,6 @@ export function BandejaPage() {
             )}
           </>
         )}
-      </main>
-
       {/* Panel de detalle (carta y notas) */}
       {bandeja.ofertaAbierta && (
         <DetalleOferta
@@ -85,6 +75,6 @@ export function BandejaPage() {
           onCambiarEstado={bandeja.cambiarEstado}
         />
       )}
-    </div>
+    </>
   );
 }

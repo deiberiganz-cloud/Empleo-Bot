@@ -19,7 +19,7 @@ const errorDeTexto = (valor, campo) => {
 
 // El manager y el escritor de cartas se reciben por parámetro (inyección) en vez de importarlos:
 // así los tests usan una base en memoria y un Claude de mentira, y no hay dependencias circulares.
-export const crearOfertasRouter = (manager, escribirCarta) => {
+export const crearOfertasRouter = (manager, { escribirCarta, escribirSeguimiento }) => {
     const router = Router()
 
     router.get('/', (req, res) => {
@@ -112,6 +112,39 @@ export const crearOfertasRouter = (manager, escribirCarta) => {
         } catch (error) {
             console.error(error)
             res.status(500).json({ status: 'error', error: 'Error al guardar las notas' })
+        }
+    })
+
+    // Fecha y hora de la entrevista (texto ISO). null la borra.
+    router.patch('/:id/entrevista', (req, res) => {
+        const id = Number(req.params.id)
+        if (!Number.isInteger(id)) return idInvalido(res)
+        const fecha = req.body?.fecha
+        if (fecha !== null && (typeof fecha !== 'string' || Number.isNaN(Date.parse(fecha)))) {
+            return res.status(400).json({ status: 'error', error: 'La fecha tiene que ser una fecha válida (o null para borrarla)' })
+        }
+        try {
+            const oferta = manager.guardarEntrevista(id, fecha)
+            if (!oferta) return noEncontrada(res)
+            res.json({ status: 'success', payload: oferta })
+        } catch (error) {
+            console.error(error)
+            res.status(500).json({ status: 'error', error: 'Error al guardar la entrevista' })
+        }
+    })
+
+    // Claude escribe un mensaje corto para preguntar cómo sigue el proceso.
+    router.post('/:id/seguimiento', async (req, res) => {
+        const id = Number(req.params.id)
+        if (!Number.isInteger(id)) return idInvalido(res)
+        const oferta = manager.obtenerPorId(id)
+        if (!oferta) return noEncontrada(res)
+        try {
+            const mensaje = await escribirSeguimiento(oferta)
+            res.json({ status: 'success', payload: manager.guardarSeguimiento(id, mensaje) })
+        } catch (error) {
+            console.error(error)
+            res.status(500).json({ status: 'error', error: `No se pudo escribir el mensaje: ${error.message}` })
         }
     })
 

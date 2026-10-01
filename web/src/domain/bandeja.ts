@@ -33,7 +33,10 @@ export function contarPorEstado(ofertas: Oferta[]): Record<Estado, number> {
   return conteo;
 }
 
-/** Los botones que tiene la tarjeta según en qué pestaña está la oferta. */
+/**
+ * Los botones que tiene una oferta según su estado. Es la única fuente: la usan la Bandeja,
+ * el tablero de Seguimiento y el panel de detalle. El botón "principal" es el paso siguiente natural.
+ */
 export function accionesPara(estado: Estado): Accion[] {
   switch (estado) {
     case "nueva":
@@ -48,11 +51,23 @@ export function accionesPara(estado: Estado): Accion[] {
         { etiqueta: "Postulé", destino: "postulada", principal: true },
       ];
     case "postulada":
-      return [{ etiqueta: "Volver a Me interesa", destino: "me_interesa" }];
+      return [
+        { etiqueta: "← Me interesa", destino: "me_interesa" },
+        { etiqueta: "✖ Rechazo", destino: "rechazada" },
+        { etiqueta: "Entrevista →", destino: "entrevista", principal: true },
+      ];
+    case "entrevista":
+      return [
+        { etiqueta: "← Postulé", destino: "postulada" },
+        { etiqueta: "✖ Rechazo", destino: "rechazada" },
+        { etiqueta: "✔ Oferta", destino: "oferta", principal: true },
+      ];
+    case "oferta":
+      return [{ etiqueta: "← Entrevista", destino: "entrevista" }];
+    case "rechazada":
+      return [{ etiqueta: "↩ Volver a Postulé", destino: "postulada" }];
     case "descartada":
       return [{ etiqueta: "Recuperar", destino: "nueva" }];
-    default:
-      return [];
   }
 }
 
