@@ -1,5 +1,5 @@
 // Lee de Gmail (IMAP) las alertas de empleo de LinkedIn de los últimos días y las imprime
-// como JSON, en el mismo formato que los portales, para sumarlas a la búsqueda (buscar.js o n8n).
+// como JSON, en el mismo formato que los portales, para sumarlas a la búsqueda (buscar.js).
 // Abre el buzón en modo solo lectura: no borra, no mueve y no marca nada como leído.
 // Uso: node busqueda/leer-alertas.js [días]   (por defecto, 2)
 const { hayCredenciales, conGmail, leerTexto } = require('./gmail');

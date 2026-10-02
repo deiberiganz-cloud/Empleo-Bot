@@ -1,5 +1,5 @@
 // Evalúa con Claude (vía la suscripción, `claude -p`) las ofertas nuevas que deja buscar.js
-// (o el flujo de n8n) en data/entrada.json, las guarda en la base (data/empleo.db) y regenera reporte.html.
+// en data/entrada.json, las guarda en la base (data/empleo.db) y regenera reporte.html.
 // Solo: `node evaluar.js` imprime el resumen en JSON. buscar.js lo usa como función (evaluar()).
 const fs = require('fs');
 const path = require('path');

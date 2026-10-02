@@ -1,6 +1,6 @@
 # Empleo Bot
 
-Asistente personal de búsqueda de empleo. Todos los días busca ofertas remotas en varios portales, **Claude las evalúa contra mi perfil**, y una app web me deja decidir, escribir la carta de presentación de cada una y seguir las postulaciones hasta el resultado.
+Asistente personal de búsqueda de empleo. Cada 12 horas busca ofertas remotas en varios portales, **Claude las evalúa contra mi perfil**, y una app web me deja decidir, escribir la carta de presentación de cada una y seguir las postulaciones hasta el resultado.
 
 Lo construí para mi propia búsqueda de trabajo. Corre en mi PC y usa Claude a través de **Claude Code con la suscripción** (`claude -p`), así que no hay costos de API.
 
@@ -22,7 +22,7 @@ Lo construí para mi propia búsqueda de trabajo. Corre en mi PC y usa Claude a 
 ## Cómo funciona
 
 ```
- busqueda/buscar.js (la API lo corre cada 12 h o con "Buscar ahora"; también sirve el flujo de n8n)
+ busqueda/buscar.js (la API lo corre cada 12 h o con "Buscar ahora")
    │  6 portales + alertas de Gmail ──► Normalizar + prefiltro (0 tokens) ──► data/entrada.json
    ▼
  evaluar.js ──► claude -p (lotes de 20) ──► SQLite (data/empleo.db)
@@ -33,7 +33,7 @@ Lo construí para mi propia búsqueda de trabajo. Corre en mi PC y usa Claude a 
 
 | Parte | Tecnología |
 |---|---|
-| Búsqueda programada | Node.js (`busqueda/buscar.js`, lo dispara la API); opcional: el mismo flujo en n8n 2.x |
+| Búsqueda programada | Node.js (`busqueda/buscar.js`, lo dispara la API con `setInterval`) |
 | Correo | IMAP de Gmail con `imapflow` + `mailparser` (solo lectura) |
 | IA | Claude vía Claude Code (`claude -p`, sin herramientas ni sesión guardada) |
 | API | Node.js 24 + Express 5 + `node:sqlite` (SQLite sin dependencias externas) |
@@ -51,13 +51,26 @@ Lo construí para mi propia búsqueda de trabajo. Corre en mi PC y usa Claude a 
 - **Cambios optimistas en la UI.** La tarjeta cambia de columna al instante y vuelve atrás si la API falla.
 - **Accesibilidad.** Colores con contraste AA, el estado nunca se comunica solo con color, y el panel de detalle se navega con teclado (foco y Escape).
 - **Alertas por correo, nunca scraping.** LinkedIn prohíbe el scraping, así que se leen sus alertas de empleo por IMAP. El buzón se abre en modo solo lectura (no se marca nada como leído) y de cada link se guarda solo el id de la oferta: el link del correo trae tokens de inicio de sesión.
-- **El correo decide solo cuando es seguro.** La confirmación de LinkedIn mueve la tarjeta sin IA. Las respuestas de las empresas las clasifica Claude, pero solo se avanza (o se cierra con un rechazo): nunca retrocede, cada correo se procesa una sola vez y, si Claude falla, se reintenta al día siguiente. Solo se bajan completos los correos que nombran a una empresa en proceso.
+- **El correo decide solo cuando es seguro.** La confirmación de LinkedIn mueve la tarjeta sin IA. Las respuestas de las empresas las clasifica Claude, pero solo se avanza (o se cierra con un rechazo): nunca retrocede, cada correo se procesa una sola vez y, si Claude falla, se reintenta a los 30 minutos, hasta 3 veces (después se deja, para no gastar en un correo que siempre falla). Solo se bajan completos los correos que nombran a una empresa en proceso.
 - **Borrar sin olvidar.** Una tabla mínima (`ofertas_borradas`) guarda la url y el estado final de lo borrado: la base no crece sin límite y el bot no vuelve a mostrar lo que ya vi.
+- **Cada fuente por su lado.** Los portales se consultan a la vez y uno caído (o que no responde en 30 segundos) no frena a los demás: queda como aviso en la pantalla.
 - **Privacidad.** Mis datos (`data/`, `perfil.md`, `.env`) nunca entran al repo. El perfil de ejemplo está en `perfil.example.md`.
+
+## Cómo empezó: de n8n a código
+
+La primera versión fue un flujo de **n8n** (`docs/n8n-version-inicial.json`): portales en paralelo, prefiltro en un nodo de código, Claude por un nodo Execute Command y un reloj diario. Armarlo en n8n sirvió para entender el flujo de datos paso a paso y probar la idea rápido.
+
+Cuando el proyecto creció (base de datos propia, app web, seguimiento por Gmail, tests), lo pasé a código para no depender de n8n:
+
+- **Un programa menos abierto.** La API ya está corriendo; ella misma dispara la búsqueda cada 12 horas o con un botón, también desde el celular.
+- **Una sola versión de la lógica**, con tests y en git. Un flujo de n8n es un JSON grande, difícil de revisar en un commit.
+- **Más robusto.** En el flujo, un portal caído cortaba toda la búsqueda; en código, cada fuente va por su lado, con tiempo máximo de espera.
+
+El flujo queda como registro de esa primera versión y **ya no se mantiene**.
 
 ## Cómo correrlo
 
-Requisitos: Node.js 24+, [Claude Code](https://claude.com/claude-code) con sesión iniciada. n8n es opcional.
+Requisitos: Node.js 24+ y [Claude Code](https://claude.com/claude-code) con sesión iniciada.
 
 ```bash
 # 1. Perfil: copiar el ejemplo y completarlo con los datos propios
@@ -70,9 +83,7 @@ cd server && npm install && npm run dev
 cd web && npm install && npm run build
 ```
 
-**Buscar a mano:** `node busqueda/buscar.js` (baja los portales, evalúa con Claude e imprime el resumen). Con la API abierta no hace falta: busca sola cada 12 horas.
-
-**Opcional, el mismo flujo en n8n:** importar `n8n/01-busqueda-empleo.json` (`n8n import:workflow --input=...`) y ajustar las rutas de los nodos "Guardar entrada.json" y "Claude evalúa" a la carpeta del proyecto. Hay que iniciar n8n con `NODES_EXCLUDE=[]`, para habilitar el nodo Execute Command, y con `N8N_RESTRICT_FILE_ACCESS_TO=<carpeta del proyecto>`.
+**Buscar a mano:** `npm run buscar` en la raíz (baja los portales, evalúa con Claude e imprime el resumen). Con la API abierta no hace falta: busca sola cada 12 horas.
 
 **Alertas de Gmail (opcional):** `npm install` en la raíz y crear `.env` con `GMAIL_USUARIO` y `GMAIL_CLAVE_APP` (una [contraseña de aplicación](https://myaccount.google.com/apppasswords) de Google, que requiere la verificación en 2 pasos). Sin `.env`, la búsqueda sigue funcionando sin las alertas. Prueba: `node busqueda/leer-alertas.js 7`.
 

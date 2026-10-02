@@ -21,7 +21,7 @@ const app = crearApp(manager, {
 
 app.listen(PUERTO, () => {
     console.log(`API de empleo-bot en http://localhost:${PUERTO}`)
-    // Mientras la app está abierta, el seguimiento por Gmail corre solo (además del de n8n).
+    // Mientras la app está abierta, el seguimiento por Gmail corre solo.
     revisarCadaRato(revisarGmail)
     console.log(`Gmail: se revisa al abrir y cada ${MINUTOS_ENTRE_REVISIONES} minutos`)
     // Y la búsqueda de ofertas: al abrir, si pasaron 12 horas desde la última, y después cada 12 horas.

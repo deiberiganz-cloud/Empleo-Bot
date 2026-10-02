@@ -1,9 +1,10 @@
 {
   "name": "empleo-bot",
   "version": "1.0.0",
-  "description": "Scripts que corre n8n: evaluar ofertas con Claude y leer alertas de Gmail",
+  "description": "Búsqueda de ofertas: bajar portales y alertas de Gmail, prefiltrar, evaluar con Claude y seguir las postulaciones",
   "private": true,
   "scripts": {
+    "buscar": "node --disable-warning=ExperimentalWarning busqueda/buscar.js",
     "alertas": "node busqueda/leer-alertas.js",
     "test": "node --test busqueda/*.test.js"
   },

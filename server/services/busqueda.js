@@ -79,7 +79,7 @@ export const proximaBusqueda = (ultima, ahora = new Date()) => {
 /**
  * Mientras la API esté abierta, se fija al arrancar y cada MINUTOS_ENTRE_CONTROLES si ya toca buscar.
  * La fecha de la última búsqueda sale de la base, así que la cuenta sigue aunque se cierre la app
- * (y también cuenta una búsqueda hecha con n8n o a mano).
+ * (y también cuenta una búsqueda hecha a mano con node busqueda/buscar.js).
  * Los errores solo se anotan en la consola: el próximo control lo vuelve a intentar.
  *
  * @param {{ buscar: () => Promise<object>, ultimaBusqueda: () => ({ fecha: string } | null) }} dependencias

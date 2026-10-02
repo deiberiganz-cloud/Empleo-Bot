@@ -1,13 +1,14 @@
-// Búsqueda completa de ofertas, sin n8n: hace lo mismo que el flujo "Empleo 1 - Búsqueda diaria".
+// Búsqueda completa de ofertas.
 // 1. Baja los 6 portales gratis, todos a la vez y cada uno por su lado: si uno no responde, los demás siguen.
 // 2. Suma las alertas de LinkedIn que llegan a Gmail.
-// 3. Normaliza y prefiltra sin IA (normalizar.js: el mismo código que el nodo de n8n).
+// 3. Normaliza y prefiltra sin IA (normalizar.js).
 // 4. Guarda data/entrada.json y Claude evalúa las nuevas (evaluar.js), que anota la búsqueda en la base.
 // Uso: node busqueda/buscar.js   → imprime el resumen en JSON. La app lo corre sola cada 12 horas.
 const fs = require('fs');
 const path = require('path');
 const { hayCredenciales } = require('./gmail');
 const { leerAlertas } = require('./leer-alertas');
+const { normalizar } = require('./normalizar');
 
 const ENTRADA = path.join(__dirname, '..', 'data', 'entrada.json');
 const CABECERAS = { 'User-Agent': 'Mozilla/5.0 (empleo-bot personal)' };
@@ -60,7 +61,7 @@ function arreglarAcentos(texto) {
 }
 
 /**
- * Lee un RSS y devuelve sus items con los mismos campos que el nodo "RSS Read" de n8n.
+ * Lee un RSS y devuelve sus items: título, link, contenido (HTML) y fecha ISO.
  * @returns {{ title: string, link: string, content: string, isoDate: string }[]}
  */
 function leerRss(xml) {
@@ -81,7 +82,7 @@ function leerRss(xml) {
   return items;
 }
 
-// Cada fuente devuelve lo mismo que su nodo en n8n; normalizar.js sabe leer todas.
+// Cada fuente devuelve la respuesta tal como viene del portal; normalizar.js sabe leer todas.
 // Get on Board va una vez por búsqueda: si una falla, las otras siguen.
 const PORTALES = [
   {
@@ -110,25 +111,22 @@ const ALERTAS = {
 /**
  * Baja todas las fuentes a la vez. Las que fallan quedan en `errores` y no frenan a las demás.
  * @param {{ nombre: string, bajar: () => Promise<object | object[]> }[]} fuentes
- * @returns {Promise<{ items: { json: object }[], errores: string[], respondieron: number }>}
+ * @returns {Promise<{ respuestas: object[], errores: string[], respondieron: number }>} las listas
+ *   (como la de RemoteOK) llegan ya separadas: un elemento por respuesta
  */
 async function bajarFuentes(fuentes) {
   const resultados = await Promise.allSettled(fuentes.map(fuente => fuente.bajar()));
-  const items = [];
+  const respuestas = [];
   const errores = [];
   resultados.forEach((resultado, i) => {
     if (resultado.status === 'rejected') {
       errores.push(`${fuentes[i].nombre}: ${resultado.reason?.message ?? resultado.reason}`);
       return;
     }
-    const valor = resultado.value;
-    for (const json of Array.isArray(valor) ? valor : [valor]) items.push({ json });
+    respuestas.push(...[resultado.value].flat());
   });
-  return { items, errores, respondieron: fuentes.length - errores.length };
+  return { respuestas, errores, respondieron: fuentes.length - errores.length };
 }
-
-// El código de normalizar.js es el del nodo "Normalizar y prefiltrar" de n8n, que recibe los items en $input.
-const normalizar = new Function('$input', fs.readFileSync(path.join(__dirname, 'normalizar.js'), 'utf8'));
 
 /**
  * Corre la búsqueda completa y devuelve el resumen de evaluar.js.
@@ -136,10 +134,10 @@ const normalizar = new Function('$input', fs.readFileSync(path.join(__dirname, '
  * así la app lo vuelve a intentar en la próxima vuelta en vez de esperar 12 horas.
  */
 async function buscar({ fuentes = [...PORTALES, ALERTAS] } = {}) {
-  const { items, errores, respondieron } = await bajarFuentes(fuentes);
+  const { respuestas, errores, respondieron } = await bajarFuentes(fuentes);
   if (respondieron === 0) throw new Error(`No respondió ninguna fuente. ${errores.join(' · ')}`);
 
-  const ofertas = normalizar({ all: () => items }).map(item => item.json);
+  const ofertas = normalizar(respuestas);
   fs.mkdirSync(path.dirname(ENTRADA), { recursive: true });
   fs.writeFileSync(ENTRADA, JSON.stringify(ofertas));
 

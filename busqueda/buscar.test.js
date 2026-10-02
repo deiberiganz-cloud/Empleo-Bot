@@ -18,7 +18,7 @@ const RSS = `<?xml version="1.0"?><rss><channel>
 </item>
 </channel></rss>`;
 
-test('leerRss devuelve los mismos campos que el nodo de n8n, con el HTML ya decodificado', () => {
+test('leerRss devuelve título, link, contenido y fecha, con el HTML ya decodificado', () => {
   const items = leerRss(RSS);
   assert.strictEqual(items.length, 2);
   assert.deepStrictEqual(items[0], {
@@ -38,12 +38,12 @@ test('decodificar no decodifica dos veces', () => {
 });
 
 test('si una fuente falla, las demás siguen y el error queda anotado', async () => {
-  const { items, errores, respondieron } = await bajarFuentes([
+  const { respuestas, errores, respondieron } = await bajarFuentes([
     { nombre: 'Portal lista', bajar: async () => [{ a: 1 }, { a: 2 }] },
     { nombre: 'Portal caído', bajar: async () => { throw new Error('respondió 503'); } },
     { nombre: 'Portal objeto', bajar: async () => ({ jobs: [] }) },
   ]);
-  assert.deepStrictEqual(items, [{ json: { a: 1 } }, { json: { a: 2 } }, { json: { jobs: [] } }]);
+  assert.deepStrictEqual(respuestas, [{ a: 1 }, { a: 2 }, { jobs: [] }]);
   assert.deepStrictEqual(errores, ['Portal caído: respondió 503']);
   assert.strictEqual(respondieron, 2);
 });

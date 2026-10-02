@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-// El mismo script que corre n8n: así hay una sola forma de hacer el seguimiento por Gmail.
+// El mismo script que se puede correr a mano: así hay una sola forma de hacer el seguimiento por Gmail.
 const SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'busqueda', 'leer-respuestas.js')
 export const MINUTOS_ENTRE_REVISIONES = 30
 
