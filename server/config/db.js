@@ -35,7 +35,8 @@ const ESQUEMA = `
         fecha_postulacion  TEXT,
         fecha_entrevista   TEXT,
         mensaje_seguimiento TEXT,
-        archivada          TEXT
+        archivada          TEXT,
+        mensaje_corto      TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_ofertas_estado ON ofertas (estado);
 
@@ -67,6 +68,7 @@ const COLUMNAS_AGREGADAS = [
     { nombre: 'fecha_entrevista', tipo: 'TEXT' },
     { nombre: 'mensaje_seguimiento', tipo: 'TEXT' },
     { nombre: 'archivada', tipo: 'TEXT' },
+    { nombre: 'mensaje_corto', tipo: 'TEXT' },
 ]
 
 const migrar = db => {

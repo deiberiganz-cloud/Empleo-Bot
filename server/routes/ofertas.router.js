@@ -19,7 +19,7 @@ const errorDeTexto = (valor, campo) => {
 
 // El manager y el escritor de cartas se reciben por parámetro (inyección) en vez de importarlos:
 // así los tests usan una base en memoria y un Claude de mentira, y no hay dependencias circulares.
-export const crearOfertasRouter = (manager, { escribirCarta, escribirSeguimiento, revisarGmail }) => {
+export const crearOfertasRouter = (manager, { escribirCarta, escribirSeguimiento, escribirMensajeCorto, revisarGmail }) => {
     const router = Router()
 
     router.get('/', (req, res) => {
@@ -119,6 +119,37 @@ export const crearOfertasRouter = (manager, { escribirCarta, escribirSeguimiento
         } catch (error) {
             console.error(error)
             res.status(500).json({ status: 'error', error: 'Error al guardar la carta' })
+        }
+    })
+
+    // Claude escribe la versión corta (mensaje para el reclutador por LinkedIn) y queda guardada.
+    router.post('/:id/mensaje-corto', async (req, res) => {
+        const id = Number(req.params.id)
+        if (!Number.isInteger(id)) return idInvalido(res)
+        const oferta = manager.obtenerPorId(id)
+        if (!oferta) return noEncontrada(res)
+        try {
+            const mensaje = await escribirMensajeCorto(oferta)
+            res.json({ status: 'success', payload: manager.guardarMensajeCorto(id, mensaje) })
+        } catch (error) {
+            console.error(error)
+            res.status(500).json({ status: 'error', error: `No se pudo escribir el mensaje: ${error.message}` })
+        }
+    })
+
+    // Guarda el mensaje corto editado a mano.
+    router.patch('/:id/mensaje-corto', (req, res) => {
+        const id = Number(req.params.id)
+        if (!Number.isInteger(id)) return idInvalido(res)
+        const error = errorDeTexto(req.body?.mensaje, 'mensaje')
+        if (error) return res.status(400).json({ status: 'error', error })
+        try {
+            const oferta = manager.guardarMensajeCorto(id, req.body.mensaje)
+            if (!oferta) return noEncontrada(res)
+            res.json({ status: 'success', payload: oferta })
+        } catch (error) {
+            console.error(error)
+            res.status(500).json({ status: 'error', error: 'Error al guardar el mensaje' })
         }
     })
 

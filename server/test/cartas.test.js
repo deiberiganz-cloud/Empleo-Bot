@@ -5,7 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { conectarDB } from '../config/db.js'
-import { crearEscritorDeCartas, crearEscritorDeSeguimiento } from '../services/cartas.js'
+import { crearEscritorDeCartas, crearEscritorDeMensajeCorto, crearEscritorDeSeguimiento } from '../services/cartas.js'
 
 const oferta = { titulo: 'Soporte Técnico', empresa: 'ACME', ubicacion: 'Remoto', descripcion: 'Atender tickets' }
 
@@ -40,7 +40,7 @@ test('conectarDB agrega las columnas nuevas a una base vieja sin perder datos', 
 
     const db = conectarDB(archivo)
     const columnas = db.prepare('PRAGMA table_info(ofertas)').all().map(c => c.name)
-    for (const columna of ['carta', 'fecha_postulacion', 'fecha_entrevista', 'mensaje_seguimiento']) {
+    for (const columna of ['carta', 'fecha_postulacion', 'fecha_entrevista', 'mensaje_seguimiento', 'archivada', 'mensaje_corto']) {
         assert.ok(columnas.includes(columna), columna)
     }
     assert.equal(db.prepare('SELECT titulo FROM ofertas').get().titulo, 'Vieja')
@@ -60,4 +60,21 @@ test('el escritor de seguimiento cuenta hace cuántos días se postuló', async 
     await escribir({ ...oferta, fecha_postulacion: haceOchoDias })
     assert.match(promptRecibido, /Se postuló hace 8 días/)
     assert.match(promptRecibido, /Sin presionar/)
+})
+
+test('el mensaje corto pide 40 a 70 palabras para LinkedIn y avisa si Claude no devuelve nada', async () => {
+    let promptRecibido = ''
+    const escribir = crearEscritorDeMensajeCorto({
+        leerPerfil: () => '# Perfil',
+        preguntar: async prompt => {
+            promptRecibido = prompt
+            return 'Hola, me postulé al puesto...'
+        },
+    })
+    assert.equal(await escribir(oferta), 'Hola, me postulé al puesto...')
+    assert.match(promptRecibido, /Entre 40 y 70 palabras/)
+    assert.match(promptRecibido, /NADA inventado/)
+
+    const vacio = crearEscritorDeMensajeCorto({ leerPerfil: () => '', preguntar: async () => '' })
+    await assert.rejects(vacio(oferta), /vacío/)
 })

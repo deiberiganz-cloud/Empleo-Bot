@@ -25,6 +25,7 @@ function oferta(cambios: Partial<Oferta> = {}): Oferta {
     fecha_postulacion: null,
     fecha_entrevista: null,
     mensaje_seguimiento: null,
+    mensaje_corto: null,
     archivada: null,
     ...cambios,
   };

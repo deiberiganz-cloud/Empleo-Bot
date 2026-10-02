@@ -11,7 +11,8 @@ const RUTA_WEB = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '
 /**
  * Arma la app de Express sin ponerla a escuchar, así los tests la levantan aparte.
  * @param manager el OfertasManager
- * @param escritores { escribirCarta, escribirSeguimiento }: funciones async (oferta) => texto
+ * @param escritores { escribirCarta, escribirSeguimiento, escribirMensajeCorto }: funciones async (oferta) => texto,
+ *   y revisarGmail: async () => { acciones, errores }
  */
 export const crearApp = (manager, escritores) => {
     const app = express()

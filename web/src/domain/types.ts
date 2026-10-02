@@ -34,6 +34,8 @@ export interface Oferta {
   fecha_postulacion: string | null;
   fecha_entrevista: string | null;
   mensaje_seguimiento: string | null;
+  /** Versión corta de la carta: mensaje para el reclutador por LinkedIn. */
+  mensaje_corto: string | null;
   /** Cuándo pasó al Archivo (texto ISO), o null si sigue activa. */
   archivada: string | null;
 }

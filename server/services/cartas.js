@@ -30,6 +30,19 @@ const REGLAS_SEGUIMIENTO = `
 - Puede recordar en una frase por qué encaja (algo concreto del perfil que pide la oferta). Nada inventado.
 - Sin presionar ni reclamar. Sin frases de plantilla. Termina con el nombre del candidato.`
 
+const SISTEMA_CORTO =
+    'Sos un asesor de empleo que escribe mensajes directos y breves para reclutadores, en español neutro y profesional. ' +
+    'Respondé SOLO con el texto del mensaje, sin asunto, sin comillas y sin comentarios.'
+
+const REGLAS_CORTO = `
+## Reglas para el mensaje
+- Entre 40 y 70 palabras: es un mensaje directo por LinkedIn a quien publicó la búsqueda, no una carta.
+- Si ya se postuló, contalo ("me postulé a..."); si no, que le interesa el puesto.
+- Saludo corto, el puesto, 1 o 2 cosas concretas del perfil que coinciden con lo que pide la oferta,
+  y un cierre que invite a conversar. Termina con el nombre del candidato.
+- NADA inventado: solo experiencia, proyectos y tecnologías del perfil. Nunca digas que su inglés es más que básico.
+- Sin frases de plantilla ni halagos exagerados. Si se conoce el nombre de la empresa, usalo.`
+
 /**
  * Arma el escritor de cartas. Recibe cómo leer el perfil y cómo preguntarle a Claude
  * (inyección): en los tests se pasa un "Claude de mentira" y no se gasta la suscripción.
@@ -71,6 +84,27 @@ export const crearEscritorDeSeguimiento = ({
 
     const prompt = `${leerPerfil()}\n\n## Postulación\n${datosOferta}\n${REGLAS_SEGUIMIENTO}`
     const mensaje = await preguntar(prompt, { sistema: SISTEMA_SEGUIMIENTO })
+    if (!mensaje) throw new Error('Claude devolvió un mensaje vacío')
+    return mensaje
+}
+
+/**
+ * Arma el escritor del mensaje corto para el reclutador (la versión corta de la carta).
+ * Perfil y Claude se inyectan igual que en los otros escritores.
+ */
+export const crearEscritorDeMensajeCorto = ({
+    leerPerfil = () => fs.readFileSync(RUTA_PERFIL, 'utf8'),
+    preguntar = preguntarAClaude,
+} = {}) => async oferta => {
+    const datosOferta = [
+        `Puesto: ${oferta.titulo}`,
+        oferta.empresa && `Empresa: ${oferta.empresa}`,
+        oferta.fecha_postulacion ? 'El candidato YA se postuló a este puesto.' : 'El candidato todavía no se postuló.',
+        `Descripción: ${(oferta.descripcion || 'Sin descripción').slice(0, 3000)}`,
+    ].filter(Boolean).join('\n')
+
+    const prompt = `${leerPerfil()}\n\n## Oferta\n${datosOferta}\n${REGLAS_CORTO}`
+    const mensaje = await preguntar(prompt, { sistema: SISTEMA_CORTO })
     if (!mensaje) throw new Error('Claude devolvió un mensaje vacío')
     return mensaje
 }

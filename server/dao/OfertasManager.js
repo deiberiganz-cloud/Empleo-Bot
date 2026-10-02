@@ -91,6 +91,14 @@ export class OfertasManager {
     }
 
     /**
+     * Guarda el mensaje corto para el reclutador (la versión corta de la carta, para LinkedIn).
+     * @returns la oferta actualizada, o null si no existe
+     */
+    guardarMensajeCorto(id, mensaje) {
+        return this.#actualizarCampo(id, 'mensaje_corto', mensaje)
+    }
+
+    /**
      * Guarda las notas propias sobre una oferta.
      * @returns la oferta actualizada, o null si no existe
      */

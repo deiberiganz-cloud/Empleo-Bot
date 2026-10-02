@@ -39,6 +39,19 @@ export function escribirCartaOferta(id: number): Promise<Oferta> {
   return pedir<Oferta>(`${BASE}/${id}/carta`, { method: "POST" });
 }
 
+/** La versión corta: un mensaje de 40 a 70 palabras para el reclutador por LinkedIn. */
+export function escribirMensajeCortoOferta(id: number): Promise<Oferta> {
+  return pedir<Oferta>(`${BASE}/${id}/mensaje-corto`, { method: "POST" });
+}
+
+export function guardarMensajeCortoOferta(id: number, mensaje: string): Promise<Oferta> {
+  return pedir<Oferta>(`${BASE}/${id}/mensaje-corto`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mensaje }),
+  });
+}
+
 export function guardarCartaOferta(id: number, carta: string): Promise<Oferta> {
   return pedir<Oferta>(`${BASE}/${id}/carta`, {
     method: "PATCH",

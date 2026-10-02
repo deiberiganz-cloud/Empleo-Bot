@@ -153,6 +153,7 @@ describe('API /api/ofertas', () => {
         servidor = crearApp(manager, {
             escribirCarta: escribirCartaFalsa,
             escribirSeguimiento: async oferta => `Seguimiento de ${oferta.titulo}`,
+            escribirMensajeCorto: async oferta => `Mensaje corto para ${oferta.titulo}`,
             revisarGmail: async () => ({ acciones: [{ titulo: 'X', empresa: 'Y', accion: 'postulada' }], errores: [] }),
         }).listen(0)
         await new Promise(resolve => servidor.once('listening', resolve))
@@ -252,5 +253,15 @@ describe('API /api/ofertas', () => {
         const { codigo, cuerpo } = await pedir('/revisar-gmail', { method: 'POST' })
         assert.equal(codigo, 200)
         assert.equal(cuerpo.payload.acciones.length, 1)
+    })
+
+    test('POST y PATCH /:id/mensaje-corto escriben, guardan y validan el mensaje corto', async () => {
+        const escrito = await pedir('/1/mensaje-corto', { method: 'POST' })
+        assert.equal(escrito.codigo, 200)
+        assert.equal(escrito.cuerpo.payload.mensaje_corto, 'Mensaje corto para Desarrollador Junior')
+        const editado = await enviar('PATCH', '/1/mensaje-corto', { mensaje: 'Mi versión corta' })
+        assert.equal(editado.cuerpo.payload.mensaje_corto, 'Mi versión corta')
+        assert.equal((await enviar('PATCH', '/1/mensaje-corto', { mensaje: 5 })).codigo, 400)
+        assert.equal((await pedir('/999/mensaje-corto', { method: 'POST' })).codigo, 404)
     })
 })

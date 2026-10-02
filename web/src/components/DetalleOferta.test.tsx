@@ -27,6 +27,7 @@ const oferta: Oferta = {
   fecha_postulacion: null,
   fecha_entrevista: null,
   mensaje_seguimiento: null,
+  mensaje_corto: null,
   archivada: null,
 };
 
@@ -76,10 +77,23 @@ describe("DetalleOferta", () => {
   test("con una carta editada avisa que hay cambios sin guardar", async () => {
     mostrar({ ...oferta, carta: "Carta guardada" });
     const cuadro = screen.getByRole("textbox", { name: "Carta de presentación" });
-    expect(screen.getByRole("button", { name: "Guardada" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Guardado" })).toBeDisabled();
     await userEvent.type(cuadro, " y editada");
     expect(screen.getByRole("button", { name: "Guardar cambios" })).toBeEnabled();
     expect(screen.getByText("Tenés cambios sin guardar.")).toBeInTheDocument();
+  });
+
+  test("'Mensaje corto' muestra la versión para LinkedIn y la pide a su propia ruta", async () => {
+    const fetchFalso = apiResponde({ status: "success", payload: { ...oferta, mensaje_corto: "Hola, vi la búsqueda" } });
+    mostrar({ ...oferta, carta: "Carta larga" });
+    await userEvent.click(screen.getByRole("button", { name: "Mensaje corto" }));
+    expect(screen.getByRole("button", { name: "Mensaje corto" })).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(screen.getByRole("button", { name: "Escribir mensaje corto" }));
+    expect(fetchFalso).toHaveBeenCalledWith("/api/ofertas/3/mensaje-corto", { method: "POST" });
+    expect(await screen.findByRole("textbox", { name: "Mensaje corto para el reclutador" })).toHaveValue("Hola, vi la búsqueda");
+    // La carta completa sigue ahí al volver.
+    await userEvent.click(screen.getByRole("button", { name: "Carta completa" }));
+    expect(screen.getByRole("textbox", { name: "Carta de presentación" })).toHaveValue("Carta larga");
   });
 
   test("Escape cierra el panel", async () => {

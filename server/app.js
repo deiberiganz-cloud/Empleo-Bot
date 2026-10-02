@@ -1,7 +1,7 @@
 import { conectarDB } from './config/db.js'
 import { OfertasManager } from './dao/OfertasManager.js'
 import { crearApp } from './crearApp.js'
-import { crearEscritorDeCartas, crearEscritorDeSeguimiento } from './services/cartas.js'
+import { crearEscritorDeCartas, crearEscritorDeMensajeCorto, crearEscritorDeSeguimiento } from './services/cartas.js'
 import { crearRevisorDeGmail, revisarCadaRato, MINUTOS_ENTRE_REVISIONES } from './services/gmail.js'
 
 const PUERTO = process.env.PORT || 3001
@@ -12,6 +12,7 @@ const revisarGmail = crearRevisorDeGmail()
 const app = crearApp(new OfertasManager(db), {
     escribirCarta: crearEscritorDeCartas(),
     escribirSeguimiento: crearEscritorDeSeguimiento(),
+    escribirMensajeCorto: crearEscritorDeMensajeCorto(),
     revisarGmail,
 })
 

@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
 import { nivelPuntaje } from "../domain/bandeja";
 import type { Estado, Oferta } from "../domain/types";
-import { useCarta } from "../hooks/useCarta";
 import { useNotas } from "../hooks/useNotas";
 import { AccionesOferta } from "./AccionesOferta";
+import { SeccionCarta } from "./SeccionCarta";
 import { SeccionEntrevista, SeccionMensajeSeguimiento } from "./SeccionesSeguimiento";
 
 interface Props {
@@ -17,7 +17,6 @@ interface Props {
  * Se monta con `key={oferta.id}` para que notas y carta arranquen limpias con cada oferta.
  */
 export function DetalleOferta({ oferta, onCerrar, onCambiarEstado }: Props) {
-  const carta = useCarta(oferta);
   const notas = useNotas(oferta);
   const botonCerrar = useRef<HTMLButtonElement>(null);
 
@@ -71,59 +70,8 @@ export function DetalleOferta({ oferta, onCerrar, onCambiarEstado }: Props) {
         {oferta.estado === "postulada" && <SeccionMensajeSeguimiento oferta={oferta} />}
         {(oferta.estado === "entrevista" || oferta.fecha_entrevista) && <SeccionEntrevista oferta={oferta} />}
 
-        {/* Carta de presentación */}
-        <section className="detalle__seccion" aria-labelledby="titulo-carta">
-          <h3 id="titulo-carta" className="detalle__subtitulo">
-            CARTA DE PRESENTACIÓN
-          </h3>
-
-          {carta.escribiendo ? (
-            <p className="aviso" role="status">
-              <span className="spinner" aria-hidden="true" /> Claude está escribiendo tu carta… (unos 20 segundos)
-            </p>
-          ) : carta.tieneCarta ? (
-            <>
-              <textarea
-                className="campo campo--carta"
-                aria-label="Carta de presentación"
-                value={carta.texto}
-                onChange={(event) => carta.setTexto(event.target.value)}
-              />
-              <div className="detalle__botones">
-                <button type="button" className="boton boton--principal" onClick={carta.copiar}>
-                  {carta.copiado ? "¡Copiada!" : "Copiar"}
-                </button>
-                <button
-                  type="button"
-                  className="boton"
-                  onClick={carta.guardar}
-                  disabled={!carta.hayCambios || carta.guardando}
-                >
-                  {carta.guardando ? "Guardando..." : carta.hayCambios ? "Guardar cambios" : "Guardada"}
-                </button>
-                <button type="button" className="boton" onClick={carta.escribir}>
-                  Escribir otra versión
-                </button>
-              </div>
-              {carta.hayCambios && <p className="detalle__ayuda">Tenés cambios sin guardar.</p>}
-            </>
-          ) : (
-            <>
-              <p className="detalle__ayuda">
-                Claude escribe una carta con tu perfil y lo que pide esta oferta, sin inventar nada.
-              </p>
-              <button type="button" className="boton boton--principal" onClick={carta.escribir}>
-                Escribir carta
-              </button>
-            </>
-          )}
-
-          {carta.error && (
-            <p className="detalle__error" role="alert">
-              {carta.error}
-            </p>
-          )}
-        </section>
+        {/* Carta de presentación (completa o mensaje corto) */}
+        <SeccionCarta oferta={oferta} />
 
         {/* Notas */}
         <section className="detalle__seccion" aria-labelledby="titulo-notas">
