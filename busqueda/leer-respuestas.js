@@ -15,6 +15,9 @@ const GENERICAS = new Set(['the', 'grupo', 'group', 'tech', 'digital', 'global',
 const AVANCE = { postulada: 1, entrevista: 2, oferta: 3 };
 const ESTADO_POR_TIPO = { entrevista: 'entrevista', oferta: 'oferta', rechazo: 'rechazada' };
 const SIN_POSTULAR = ['nueva', 'me_interesa', 'descartada'];
+// Si Claude falla 3 veces con el mismo correo, se deja de intentar: así un correo "raro" no gasta tokens
+// cada 30 minutos durante una semana.
+const INTENTOS_MAXIMOS = 3;
 
 const normalizar = t => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const ddmm = fecha => fecha.toISOString().slice(5, 10).split('-').reverse().join('/');
@@ -93,8 +96,14 @@ async function procesar(correos, manager, clasificar) {
       if (accion) acciones.push(accion);
       manager.marcarProcesado(correo.messageId);
     } catch (e) {
-      // Si Claude falla, el correo no se marca: se reintenta en la próxima corrida.
-      errores.push(`${correo.asunto}: ${e.message}`);
+      // Si Claude falla, el correo no se marca: se reintenta en la próxima corrida, hasta INTENTOS_MAXIMOS veces.
+      const intentos = manager.sumarIntentoFallido(correo.messageId);
+      if (intentos >= INTENTOS_MAXIMOS) {
+        manager.marcarProcesado(correo.messageId);
+        errores.push(`${correo.asunto}: ${e.message} (falló ${intentos} veces: no se vuelve a intentar)`);
+      } else {
+        errores.push(`${correo.asunto}: ${e.message} (intento ${intentos} de ${INTENTOS_MAXIMOS})`);
+      }
     }
   }
   return { acciones, errores };
@@ -165,4 +174,4 @@ if (require.main === module) {
   main().catch(e => { console.error('No se pudo hacer el seguimiento por Gmail:', e.message); process.exit(1); });
 }
 
-module.exports = { procesar, elegirCandidatos, claveEmpresa };
+module.exports = { INTENTOS_MAXIMOS, procesar, elegirCandidatos, claveEmpresa };

@@ -144,6 +144,18 @@ export class OfertasManager {
     }
 
     /**
+     * Suma un intento fallido a un correo (Claude no pudo clasificarlo).
+     * @returns {number} cuántas veces falló en total
+     */
+    sumarIntentoFallido(messageId, ahora = new Date().toISOString()) {
+        return this.db.prepare(`
+            INSERT INTO correos_fallidos (message_id, intentos, ultimo) VALUES (?, 1, ?)
+            ON CONFLICT (message_id) DO UPDATE SET intentos = intentos + 1, ultimo = excluded.ultimo
+            RETURNING intentos
+        `).get(messageId, ahora).intentos
+    }
+
+    /**
      * Anota una búsqueda terminada (la llama evaluar.js al final de cada búsqueda).
      * @param {{ recibidas: number, nuevas: number, buenas: number, errores?: string[] }} busqueda
      */
@@ -166,7 +178,7 @@ export class OfertasManager {
      * 1. Archiva las ofertas cerradas (descartada, rechazada, oferta) hace DIAS_PARA_ARCHIVAR días.
      * 2. Borra las archivadas hace DIAS_EN_ARCHIVO días y las "nuevas" sin tocar hace DIAS_NUEVA_SIN_TOCAR,
      *    dejando en ofertas_borradas su url (para no volver a evaluarlas) y cómo terminaron.
-     * 3. Olvida los correos procesados viejos.
+     * 3. Olvida los correos procesados (y los fallidos) viejos.
      * @returns {{ archivadas: number, borradas: number }}
      */
     limpiar(ahora = new Date()) {
@@ -188,6 +200,7 @@ export class OfertasManager {
             `).run(iso, ...limites)
             borradas = this.db.prepare(`DELETE FROM ofertas WHERE ${paraBorrar}`).run(...limites).changes
             this.db.prepare('DELETE FROM correos_procesados WHERE procesado <= ?').run(haceDias(ahora, DIAS_CORREOS_PROCESADOS))
+            this.db.prepare('DELETE FROM correos_fallidos WHERE ultimo <= ?').run(haceDias(ahora, DIAS_CORREOS_PROCESADOS))
             this.db.exec('COMMIT')
         } catch (error) {
             this.db.exec('ROLLBACK')

@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { procesar, elegirCandidatos, claveEmpresa } = require('./leer-respuestas');
+const { procesar, elegirCandidatos, claveEmpresa, INTENTOS_MAXIMOS } = require('./leer-respuestas');
 
 // Base en memoria con el mismo manager que usa la app.
 async function nuevoManager() {
@@ -90,6 +90,28 @@ test('cada correo se procesa una sola vez, y si Claude falla se reintenta la pr√
   await procesar([correoEmpresa()], manager, claude.clasificar);
   await procesar([correoEmpresa()], manager, claude.clasificar);
   assert.deepStrictEqual(claude.llamadas, ['<rrhh@retorna>']);
+});
+
+test('si Claude falla 3 veces con el mismo correo, se deja de intentar', async () => {
+  const manager = await nuevoManager();
+  manager.guardar(oferta());
+  const [o] = manager.listar();
+  manager.cambiarEstado(o.id, 'postulada');
+  let llamadas = 0;
+  const falla = async () => { llamadas++; throw new Error('Tipo inesperado: quizas'); };
+
+  for (let i = 1; i < INTENTOS_MAXIMOS; i++) {
+    const { errores } = await procesar([correoEmpresa()], manager, falla);
+    assert.match(errores[0], new RegExp(`intento ${i} de ${INTENTOS_MAXIMOS}`));
+    assert.strictEqual(manager.yaProcesado('<rrhh@retorna>'), false);
+  }
+  const { errores } = await procesar([correoEmpresa()], manager, falla);
+  assert.match(errores[0], /no se vuelve a intentar/);
+  assert.strictEqual(manager.yaProcesado('<rrhh@retorna>'), true);
+
+  // A partir de ac√°, ese correo ya no llega a Claude.
+  await procesar([correoEmpresa()], manager, falla);
+  assert.strictEqual(llamadas, INTENTOS_MAXIMOS);
 });
 
 test('elige solo confirmaciones y correos que nombran a una empresa en proceso', async () => {

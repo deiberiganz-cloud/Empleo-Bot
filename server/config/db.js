@@ -56,7 +56,14 @@ const ESQUEMA = `
         procesado  TEXT NOT NULL
     );
 
-    -- Cada búsqueda de ofertas (la app, el botón o n8n): la app muestra la última y decide cuándo toca otra.
+    -- Correos con los que Claude falló: cuántas veces, para dejar de intentar al tercero.
+    CREATE TABLE IF NOT EXISTS correos_fallidos (
+        message_id TEXT PRIMARY KEY,
+        intentos   INTEGER NOT NULL,
+        ultimo     TEXT    NOT NULL
+    );
+
+    -- Cada búsqueda de ofertas (automática, con el botón o a mano): la app muestra la última y decide cuándo toca otra.
     CREATE TABLE IF NOT EXISTS busquedas (
         id        INTEGER PRIMARY KEY AUTOINCREMENT,
         fecha     TEXT    NOT NULL,
