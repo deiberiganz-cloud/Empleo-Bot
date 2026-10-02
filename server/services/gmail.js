@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url'
 
 // El mismo script que se puede correr a mano: así hay una sola forma de hacer el seguimiento por Gmail.
 const SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'busqueda', 'leer-respuestas.js')
-export const MINUTOS_ENTRE_REVISIONES = 30
+// Sin correos nuevos, una revisión gasta 0 tokens (solo lee encabezados): se puede revisar seguido.
+export const MINUTOS_ENTRE_REVISIONES = 10
 
 /**
  * Arma el "revisor" de Gmail: corre leer-respuestas.js en otro proceso (la API sigue atendiendo

@@ -25,7 +25,7 @@ export function listarArchivadas(): Promise<Oferta[]> {
   return pedir<Oferta[]>(`${BASE}?archivadas=1`);
 }
 
-/** Revisa Gmail en el momento (la API también lo hace sola cada 30 minutos). */
+/** Revisa Gmail en el momento (la API también lo hace sola cada 10 minutos). */
 export function revisarGmail(): Promise<RevisionGmail> {
   return pedir<RevisionGmail>(`${BASE}/revisar-gmail`, { method: "POST" });
 }

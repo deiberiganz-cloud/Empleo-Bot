@@ -31,7 +31,7 @@ export function SeguimientoPage() {
     <>
       <ResumenSeguimiento resumen={seguimiento.resumen} />
 
-      {/* Gmail se revisa solo cada 30 minutos; el botón es para no esperar */}
+      {/* Gmail se revisa solo cada 10 minutos; el botón es para no esperar */}
       <div className="revisar-gmail">
         <button type="button" className="boton" disabled={revision.isPending} onClick={() => revision.mutate()}>
           {revision.isPending ? "Revisando Gmail..." : "Revisar Gmail ahora"}
@@ -40,7 +40,7 @@ export function SeguimientoPage() {
           {revision.isPending && <span className="spinner" aria-hidden="true" />}
           {revision.data && textoRevision(revision.data.acciones.length)}
           {revision.error && `No se pudo revisar: ${revision.error.message}`}
-          {!revision.data && !revision.error && !revision.isPending && "Se revisa solo cada 30 minutos."}
+          {!revision.data && !revision.error && !revision.isPending && "Se revisa solo cada 10 minutos y la pantalla se actualiza sola."}
         </p>
       </div>
 

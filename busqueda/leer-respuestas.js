@@ -16,7 +16,7 @@ const AVANCE = { postulada: 1, entrevista: 2, oferta: 3 };
 const ESTADO_POR_TIPO = { entrevista: 'entrevista', oferta: 'oferta', rechazo: 'rechazada' };
 const SIN_POSTULAR = ['nueva', 'me_interesa', 'descartada'];
 // Si Claude falla 3 veces con el mismo correo, se deja de intentar: así un correo "raro" no gasta tokens
-// cada 30 minutos durante una semana.
+// en cada revisión durante una semana.
 const INTENTOS_MAXIMOS = 3;
 
 const normalizar = t => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
