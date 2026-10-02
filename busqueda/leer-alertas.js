@@ -1,7 +1,7 @@
 // Lee de Gmail (IMAP) las alertas de empleo de LinkedIn de los últimos días y las imprime
-// como JSON, en el mismo formato que los portales, para que n8n las sume a la búsqueda.
+// como JSON, en el mismo formato que los portales, para sumarlas a la búsqueda (buscar.js o n8n).
 // Abre el buzón en modo solo lectura: no borra, no mueve y no marca nada como leído.
-// Uso: node n8n/leer-alertas.js [días]   (por defecto, 2)
+// Uso: node busqueda/leer-alertas.js [días]   (por defecto, 2)
 const { hayCredenciales, conGmail, leerTexto } = require('./gmail');
 
 const REMITENTES = ['jobalerts-noreply@linkedin.com', 'jobs-noreply@linkedin.com'];
@@ -73,4 +73,4 @@ if (require.main === module) {
   main().catch(e => { console.error('No se pudieron leer las alertas de Gmail:', e.message); process.exit(1); });
 }
 
-module.exports = { extraerOfertas };
+module.exports = { extraerOfertas, leerAlertas };

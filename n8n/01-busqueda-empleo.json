@@ -246,7 +246,7 @@
     },
     {
       "parameters": {
-        "command": "node C:/Users/Admin/Desktop/empleo-bot/n8n/leer-alertas.js"
+        "command": "node C:/Users/Admin/Desktop/empleo-bot/busqueda/leer-alertas.js"
       },
       "name": "Alertas de Gmail (LinkedIn)",
       "type": "n8n-nodes-base.executeCommand",
@@ -272,7 +272,7 @@
     },
     {
       "parameters": {
-        "command": "node C:/Users/Admin/Desktop/empleo-bot/n8n/leer-respuestas.js"
+        "command": "node C:/Users/Admin/Desktop/empleo-bot/busqueda/leer-respuestas.js"
       },
       "name": "Seguimiento por Gmail",
       "type": "n8n-nodes-base.executeCommand",

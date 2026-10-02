@@ -55,6 +55,16 @@ const ESQUEMA = `
         message_id TEXT PRIMARY KEY,
         procesado  TEXT NOT NULL
     );
+
+    -- Cada búsqueda de ofertas (la app, el botón o n8n): la app muestra la última y decide cuándo toca otra.
+    CREATE TABLE IF NOT EXISTS busquedas (
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        fecha     TEXT    NOT NULL,
+        recibidas INTEGER NOT NULL,
+        nuevas    INTEGER NOT NULL,
+        buenas    INTEGER NOT NULL,
+        errores   TEXT    NOT NULL DEFAULT '[]'
+    );
 `
 
 // Estados en los que una oferta ya terminó: a los DIAS_PARA_ARCHIVAR pasan al Archivo.
@@ -91,6 +101,9 @@ const migrar = db => {
 export const conectarDB = (ruta = process.env.DB_PATH || RUTA_DB_POR_DEFECTO) => {
     const db = new DatabaseSync(ruta)
     db.exec('PRAGMA journal_mode = WAL;')
+    // La API, la búsqueda y el seguimiento por Gmail pueden escribir a la vez (son procesos distintos):
+    // si la base está ocupada, esperamos hasta 5 segundos en vez de fallar.
+    db.exec('PRAGMA busy_timeout = 5000;')
     db.exec(ESQUEMA)
     migrar(db)
     return db

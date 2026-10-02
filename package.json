@@ -4,8 +4,8 @@
   "description": "Scripts que corre n8n: evaluar ofertas con Claude y leer alertas de Gmail",
   "private": true,
   "scripts": {
-    "alertas": "node n8n/leer-alertas.js",
-    "test": "node --test n8n/*.test.js"
+    "alertas": "node busqueda/leer-alertas.js",
+    "test": "node --test busqueda/*.test.js"
   },
   "license": "MIT",
   "dependencies": {

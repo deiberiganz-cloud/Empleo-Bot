@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 // El mismo script que corre n8n: así hay una sola forma de hacer el seguimiento por Gmail.
-const SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'n8n', 'leer-respuestas.js')
+const SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'busqueda', 'leer-respuestas.js')
 export const MINUTOS_ENTRE_REVISIONES = 30
 
 /**

@@ -1,6 +1,6 @@
-// Evalúa con Claude (vía la suscripción, `claude -p`) las ofertas nuevas que deja n8n
-// en data/entrada.json, las guarda en la base (data/empleo.db) y regenera reporte.html.
-// Imprime un resumen en JSON para que n8n lo lea.
+// Evalúa con Claude (vía la suscripción, `claude -p`) las ofertas nuevas que deja buscar.js
+// (o el flujo de n8n) en data/entrada.json, las guarda en la base (data/empleo.db) y regenera reporte.html.
+// Solo: `node evaluar.js` imprime el resumen en JSON. buscar.js lo usa como función (evaluar()).
 const fs = require('fs');
 const path = require('path');
 
@@ -76,7 +76,12 @@ ${filas}</table></html>`;
   fs.writeFileSync(REPORTE, html, 'utf8');
 }
 
-async function main() {
+/**
+ * Evalúa las ofertas nuevas de data/entrada.json, las guarda y anota la búsqueda en la base.
+ * @param {{ erroresFuentes?: string[] }} opciones portales que no respondieron (para el resumen)
+ * @returns el resumen: recibidas, evaluadas, buenas (de esta vez), buenasHoy, top, limpieza y errores
+ */
+async function evaluar({ erroresFuentes = [] } = {}) {
   // La base y su manager son los mismos que usa la API (server/), así hay una sola forma de guardar.
   const { conectarDB } = await import('./server/config/db.js');
   const { OfertasManager } = await import('./server/dao/OfertasManager.js');
@@ -88,7 +93,10 @@ async function main() {
   const vistas = manager.urlsGuardadas();
   const nuevas = entrada.filter(o => o.url && !vistas.has(o.url));
   const hoy = new Date().toISOString().slice(0, 10);
-  const errores = [];
+  // Los errores de los portales que no respondieron (los manda buscar.js) van al mismo resumen.
+  const errores = [...erroresFuentes];
+  let guardadas = 0;
+  let buenasDeEstaVez = 0;
 
   for (let i = 0; i < nuevas.length; i += LOTE) {
     const lote = nuevas.slice(i, i + LOTE);
@@ -97,11 +105,15 @@ async function main() {
       for (const n of notas) {
         const o = lote[n.id];
         if (!o) continue;
-        manager.guardar({ ...o, puntaje: n.puntaje, tipo: n.tipo, motivo: n.motivo,
-          postular: !!n.postular, estafa: !!n.estafa, encontrada: hoy });
+        const oferta = { ...o, puntaje: n.puntaje, tipo: n.tipo, motivo: n.motivo,
+          postular: !!n.postular, estafa: !!n.estafa, encontrada: hoy };
+        if (!manager.guardar(oferta)) continue;
+        guardadas++;
+        if (esBuena(oferta)) buenasDeEstaVez++;
       }
     } catch (e) {
-      errores.push(e.message);
+      // El lote que falla no se guarda: la próxima búsqueda lo vuelve a evaluar.
+      errores.push(`Claude: ${e.message}`);
     }
   }
 
@@ -112,12 +124,18 @@ async function main() {
   generarReporte(todas);
   const buenas = todas.filter(o => o.encontrada === hoy && esBuena(o))
     .sort((a, b) => b.puntaje - a.puntaje);
-  console.log(JSON.stringify({ recibidas: entrada.length, evaluadas: nuevas.length, buenasHoy: buenas.length,
+  // Queda anotada en la base: la app muestra la última y decide cuándo toca la próxima.
+  manager.registrarBusqueda({ recibidas: entrada.length, nuevas: guardadas, buenas: buenasDeEstaVez, errores });
+  return { recibidas: entrada.length, evaluadas: guardadas, buenas: buenasDeEstaVez, buenasHoy: buenas.length,
     top: buenas.slice(0, 10).map(o => ({ puntaje: o.puntaje, titulo: o.titulo, empresa: o.empresa, url: o.url })),
-    reporte: REPORTE, limpieza, errores }));
+    reporte: REPORTE, limpieza, errores };
 }
 
-main().catch(e => {
-  console.error(e);
-  process.exit(1);
-});
+if (require.main === module) {
+  evaluar().then(resumen => console.log(JSON.stringify(resumen))).catch(e => {
+    console.error(e);
+    process.exit(1);
+  });
+}
+
+module.exports = { evaluar };

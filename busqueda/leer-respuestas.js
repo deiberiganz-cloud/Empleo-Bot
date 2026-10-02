@@ -3,7 +3,7 @@
 // - Correo de una empresa a la que te postulaste: Claude lo clasifica (entrevista, rechazo, oferta u otro),
 //   la tarjeta se mueve y queda una nota 🤖 con el resumen.
 // Gmail se abre en solo lectura y cada correo se procesa una sola vez.
-// Uso: node n8n/leer-respuestas.js [días]   (por defecto, 7)
+// Uso: node busqueda/leer-respuestas.js [días]   (por defecto, 7)
 const { hayCredenciales, conGmail, leerTexto } = require('./gmail');
 const { extraerOfertas } = require('./leer-alertas');
 

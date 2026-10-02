@@ -144,6 +144,24 @@ export class OfertasManager {
     }
 
     /**
+     * Anota una búsqueda terminada (la llama evaluar.js al final de cada búsqueda).
+     * @param {{ recibidas: number, nuevas: number, buenas: number, errores?: string[] }} busqueda
+     */
+    registrarBusqueda({ recibidas, nuevas, buenas, errores = [] }, ahora = new Date().toISOString()) {
+        this.db.prepare('INSERT INTO busquedas (fecha, recibidas, nuevas, buenas, errores) VALUES (?, ?, ?, ?, ?)')
+            .run(ahora, recibidas, nuevas, buenas, JSON.stringify(errores))
+    }
+
+    /**
+     * La búsqueda más reciente, o null si nunca se buscó.
+     * @returns {{ fecha: string, recibidas: number, nuevas: number, buenas: number, errores: string[] } | null}
+     */
+    ultimaBusqueda() {
+        const fila = this.db.prepare('SELECT fecha, recibidas, nuevas, buenas, errores FROM busquedas ORDER BY fecha DESC, id DESC LIMIT 1').get()
+        return fila ? { ...fila, errores: JSON.parse(fila.errores) } : null
+    }
+
+    /**
      * Mantenimiento diario:
      * 1. Archiva las ofertas cerradas (descartada, rechazada, oferta) hace DIAS_PARA_ARCHIVAR días.
      * 2. Borra las archivadas hace DIAS_EN_ARCHIVO días y las "nuevas" sin tocar hace DIAS_NUEVA_SIN_TOCAR,

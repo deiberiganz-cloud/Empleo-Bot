@@ -10,19 +10,19 @@ Lo construí para mi propia búsqueda de trabajo. Corre en mi PC y usa Claude a 
 
 ## Qué hace
 
-1. **Busca** (n8n, una vez por día): consulta 6 portales con API o RSS pública (Get on Board, RemoteOK, Remotive, Himalayas, Working Nomads y We Work Remotely) y lee de Gmail las alertas de empleo de LinkedIn.
+1. **Busca** (sola cada 12 horas mientras la app está abierta, o con el botón "Buscar ahora"): consulta 6 portales con API o RSS pública (Get on Board, RemoteOK, Remotive, Himalayas, Working Nomads y We Work Remotely) y lee de Gmail las alertas de empleo de LinkedIn.
 2. **Filtra sin IA**: descarta con reglas los puestos senior, los que piden inglés avanzado y las ofertas repetidas. De ~250 ofertas quedan ~75, y Claude solo ve esas.
 3. **Evalúa con Claude**, en lotes de 20: le pone a cada oferta un puntaje de 0 a 100, el tipo de puesto, si conviene postular, el motivo y si tiene señales de estafa.
 4. **Bandeja**: decido cuáles me interesan y cuáles descarto.
 5. **Carta de presentación**: Claude la escribe con mi perfil y lo que pide la oferta, sin inventar experiencia. La edito y la copio.
 6. **Seguimiento**: un tablero Me interesa → Postulé → Entrevista → Resultado, con la fecha de cada entrevista, un resumen (postulaciones de la semana y tasa de respuesta) y un **recordatorio a los 7 días sin respuesta**, con el mensaje de seguimiento ya escrito.
-7. **Seguimiento automático por Gmail**: cuando LinkedIn confirma que se envió una solicitud, la oferta pasa sola a "Postulé" (si no estaba, se crea). Cuando escribe una empresa a la que me postulé, Claude lee ese correo, lo clasifica (entrevista, rechazo, oferta u otro), mueve la tarjeta y deja una nota con el resumen. Corre en la búsqueda diaria de n8n y, mientras la app está abierta, cada 30 minutos (también hay un botón "Revisar Gmail ahora").
+7. **Seguimiento automático por Gmail**: cuando LinkedIn confirma que se envió una solicitud, la oferta pasa sola a "Postulé" (si no estaba, se crea). Cuando escribe una empresa a la que me postulé, Claude lee ese correo, lo clasifica (entrevista, rechazo, oferta u otro), mueve la tarjeta y deja una nota con el resumen. Corre mientras la app está abierta, cada 30 minutos (también hay un botón "Revisar Gmail ahora").
 8. **Archivo y limpieza**: lo cerrado pasa al Archivo a los 7 días y se borra a los 30; las ofertas nuevas que nunca toqué se borran a los 30. De lo borrado queda solo la url y cómo terminó, así no se vuelve a evaluar y el historial no se pierde.
 
 ## Cómo funciona
 
 ```
- n8n (todos los días)
+ busqueda/buscar.js (la API lo corre cada 12 h o con "Buscar ahora"; también sirve el flujo de n8n)
    │  6 portales + alertas de Gmail ──► Normalizar + prefiltro (0 tokens) ──► data/entrada.json
    ▼
  evaluar.js ──► claude -p (lotes de 20) ──► SQLite (data/empleo.db)
@@ -33,7 +33,7 @@ Lo construí para mi propia búsqueda de trabajo. Corre en mi PC y usa Claude a 
 
 | Parte | Tecnología |
 |---|---|
-| Búsqueda programada | n8n 2.x (HTTP Request, RSS, Code, Merge, Execute Command) |
+| Búsqueda programada | Node.js (`busqueda/buscar.js`, lo dispara la API); opcional: el mismo flujo en n8n 2.x |
 | Correo | IMAP de Gmail con `imapflow` + `mailparser` (solo lectura) |
 | IA | Claude vía Claude Code (`claude -p`, sin herramientas ni sesión guardada) |
 | API | Node.js 24 + Express 5 + `node:sqlite` (SQLite sin dependencias externas) |
@@ -57,7 +57,7 @@ Lo construí para mi propia búsqueda de trabajo. Corre en mi PC y usa Claude a 
 
 ## Cómo correrlo
 
-Requisitos: Node.js 24+, [Claude Code](https://claude.com/claude-code) con sesión iniciada y, para la búsqueda diaria, n8n 2.x.
+Requisitos: Node.js 24+, [Claude Code](https://claude.com/claude-code) con sesión iniciada. n8n es opcional.
 
 ```bash
 # 1. Perfil: copiar el ejemplo y completarlo con los datos propios
@@ -70,16 +70,16 @@ cd server && npm install && npm run dev
 cd web && npm install && npm run build
 ```
 
-**Búsqueda diaria con n8n:** importar `n8n/01-busqueda-empleo.json` (`n8n import:workflow --input=...`) y ajustar las rutas de los nodos "Guardar entrada.json" y "Claude evalúa" a la carpeta del proyecto. Hay que iniciar n8n con `NODES_EXCLUDE=[]`, para habilitar el nodo Execute Command, y con `N8N_RESTRICT_FILE_ACCESS_TO=<carpeta del proyecto>`.
+**Buscar a mano:** `node busqueda/buscar.js` (baja los portales, evalúa con Claude e imprime el resumen). Con la API abierta no hace falta: busca sola cada 12 horas.
 
-**Alertas de Gmail (opcional):** `npm install` en la raíz y crear `.env` con `GMAIL_USUARIO` y `GMAIL_CLAVE_APP` (una [contraseña de aplicación](https://myaccount.google.com/apppasswords) de Google, que requiere la verificación en 2 pasos). Sin `.env`, la búsqueda sigue funcionando sin las alertas. Prueba: `node n8n/leer-alertas.js 7`.
+**Opcional, el mismo flujo en n8n:** importar `n8n/01-busqueda-empleo.json` (`n8n import:workflow --input=...`) y ajustar las rutas de los nodos "Guardar entrada.json" y "Claude evalúa" a la carpeta del proyecto. Hay que iniciar n8n con `NODES_EXCLUDE=[]`, para habilitar el nodo Execute Command, y con `N8N_RESTRICT_FILE_ACCESS_TO=<carpeta del proyecto>`.
 
-**Probar la búsqueda sin n8n:** `node n8n/probar-sin-n8n.js && node evaluar.js`.
+**Alertas de Gmail (opcional):** `npm install` en la raíz y crear `.env` con `GMAIL_USUARIO` y `GMAIL_CLAVE_APP` (una [contraseña de aplicación](https://myaccount.google.com/apppasswords) de Google, que requiere la verificación en 2 pasos). Sin `.env`, la búsqueda sigue funcionando sin las alertas. Prueba: `node busqueda/leer-alertas.js 7`.
 
 ## Tests
 
 ```bash
-npm test                # alertas y seguimiento por Gmail (correos inventados y un Claude de mentira)
+npm test                # búsqueda, alertas y seguimiento por Gmail (correos inventados y un Claude de mentira)
 cd server && npm test   # API, manager, migraciones y escritores de texto
 cd web && npm test      # filtros, tablero, tarjetas y panel de detalle
 ```

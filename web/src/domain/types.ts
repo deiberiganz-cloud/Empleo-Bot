@@ -46,6 +46,30 @@ export interface RevisionGmail {
   errores: string[];
 }
 
+/** Una búsqueda de ofertas terminada (la anota evaluar.js). */
+export interface Busqueda {
+  /** Cuándo terminó (texto ISO). */
+  fecha: string;
+  /** Ofertas que pasaron el prefiltro. */
+  recibidas: number;
+  /** Ofertas nuevas que Claude evaluó y quedaron en la Bandeja. */
+  nuevas: number;
+  /** De las nuevas, las que Claude recomienda. */
+  buenas: number;
+  /** Fuentes que no respondieron o lotes que Claude no pudo evaluar. */
+  errores: string[];
+}
+
+/** Estado de la búsqueda de ofertas (/api/busqueda). */
+export interface EstadoBusqueda {
+  ultima: Busqueda | null;
+  enCurso: boolean;
+  /** Error de la última búsqueda que falló entera (se borra cuando una sale bien). */
+  error: string | null;
+  /** Cuándo toca la próxima búsqueda automática (texto ISO), o null si toca ya. */
+  proxima: string | null;
+}
+
 /** Totales de toda la búsqueda, incluidas las ofertas ya borradas (/api/ofertas/historial). */
 export interface Historial {
   postuladas: number;

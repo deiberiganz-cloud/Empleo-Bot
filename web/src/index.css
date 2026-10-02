@@ -681,6 +681,21 @@ button {
   margin-bottom: 20px;
 }
 
+.barra-busqueda__textos {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.barra-busqueda__avisos {
+  cursor: help;
+}
+
+.barra-busqueda__error {
+  color: var(--status-critical-text);
+}
+
 .revisar-gmail__estado {
   display: flex;
   align-items: center;

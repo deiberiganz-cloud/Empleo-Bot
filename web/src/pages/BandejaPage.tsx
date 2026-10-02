@@ -1,3 +1,4 @@
+import { BarraBusqueda } from "../components/BarraBusqueda";
 import { DetalleOferta } from "../components/DetalleOferta";
 import { FiltrosBandeja } from "../components/FiltrosBandeja";
 import { OfertaCard } from "../components/OfertaCard";
@@ -14,6 +15,9 @@ export function BandejaPage() {
 
   return (
     <>
+        {/* La app busca sola cada 12 horas; el botón es para no esperar */}
+        <BarraBusqueda />
+
         <FiltrosBandeja
           estado={bandeja.estado}
           onEstado={bandeja.setEstado}
