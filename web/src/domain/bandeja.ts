@@ -78,3 +78,23 @@ export function nivelPuntaje(puntaje: number | null): "alto" | "medio" | "bajo" 
   if (puntaje >= 40) return "medio";
   return "bajo";
 }
+
+/** A partir de cuántos días un aviso ya no es "fresco" (se marca en la tarjeta). Los de más de 30 ni llegan. */
+export const DIAS_AVISO_FRESCO = 14;
+
+/**
+ * Cuánto hace que se publicó el aviso: "Publicada hoy", "Publicada ayer" o "Publicada hace 5 días".
+ * La fecha viene como "AAAA-MM-DD" y se compara con el día de hoy en hora local.
+ *
+ * @returns el texto y si ya no es fresco, o null si no hay una fecha válida.
+ * @example antiguedadAviso("2026-09-30", new Date(2026, 9, 2)) // { texto: "Publicada hace 2 días", vieja: false }
+ */
+export function antiguedadAviso(fecha: string | null, ahora = new Date()): { texto: string; vieja: boolean } | null {
+  const partes = fecha?.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!partes) return null;
+  const publicada = new Date(Number(partes[1]), Number(partes[2]) - 1, Number(partes[3]));
+  const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+  const dias = Math.max(0, Math.round((hoy.getTime() - publicada.getTime()) / 86400000));
+  const texto = dias === 0 ? "Publicada hoy" : dias === 1 ? "Publicada ayer" : `Publicada hace ${dias} días`;
+  return { texto, vieja: dias > DIAS_AVISO_FRESCO };
+}

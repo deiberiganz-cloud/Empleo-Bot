@@ -82,6 +82,22 @@ describe('Archivo y limpieza', () => {
         manager = new OfertasManager(conectarDB(':memory:'))
     })
 
+    test('descarta las nuevas con aviso de más de 30 días, con nota, y no toca las que ya moviste', () => {
+        manager.guardar(ofertaDePrueba({ url: 'u/vieja', fecha: '2026-10-15', encontrada: '2026-11-29' }))
+        manager.guardar(ofertaDePrueba({ url: 'u/fresca', fecha: '2026-11-25', encontrada: '2026-11-29' }))
+        manager.guardar(ofertaDePrueba({ url: 'u/sin-fecha', encontrada: '2026-11-29' }))
+        manager.guardar(ofertaDePrueba({ url: 'u/me-interesa', fecha: '2026-09-01', encontrada: '2026-11-29' }))
+        manager.cambiarEstado(manager.obtenerPorUrl('u/me-interesa').id, 'me_interesa')
+
+        assert.equal(manager.limpiar(ahora).viejas, 1)
+        const vieja = manager.obtenerPorUrl('u/vieja')
+        assert.equal(vieja.estado, 'descartada')
+        assert.match(vieja.notas, /más de 30 días/)
+        assert.equal(manager.obtenerPorUrl('u/fresca').estado, 'nueva')
+        assert.equal(manager.obtenerPorUrl('u/sin-fecha').estado, 'nueva')
+        assert.equal(manager.obtenerPorUrl('u/me-interesa').estado, 'me_interesa')
+    })
+
     test('archiva las cerradas hace 7 días o más, y no las que siguen en proceso', () => {
         manager.guardar(ofertaDePrueba({ url: 'u/rechazada', encontrada: '2026-11-01' }))
         manager.guardar(ofertaDePrueba({ url: 'u/reciente', encontrada: '2026-11-01' }))
@@ -91,7 +107,7 @@ describe('Archivo y limpieza', () => {
         manager.cambiarEstado(reciente.id, 'descartada', haceDias(3))
         manager.cambiarEstado(postulada.id, 'postulada', haceDias(20))
 
-        assert.deepEqual(manager.limpiar(ahora), { archivadas: 1, borradas: 0 })
+        assert.deepEqual(manager.limpiar(ahora), { viejas: 0, archivadas: 1, borradas: 0 })
         assert.deepEqual(manager.listar({ archivadas: true }).map(o => o.url), ['u/rechazada'])
         assert.equal(manager.listar().length, 2)
     })
@@ -105,7 +121,7 @@ describe('Archivo y limpieza', () => {
         manager.cambiarEstado(archivada.id, 'rechazada', haceDias(45))
         manager.limpiar(new Date(ahora.getTime() - 31 * 864e5))
 
-        assert.deepEqual(manager.limpiar(ahora), { archivadas: 0, borradas: 2 })
+        assert.deepEqual(manager.limpiar(ahora), { viejas: 0, archivadas: 0, borradas: 2 })
         assert.deepEqual(manager.listar().map(o => o.url), ['u/nueva-reciente'])
         assert.ok(manager.urlsGuardadas().has('u/vieja'))
         assert.ok(manager.urlsGuardadas().has('u/archivada'))

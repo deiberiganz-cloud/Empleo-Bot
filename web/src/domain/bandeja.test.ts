@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { accionesPara, contarPorEstado, filtrarOfertas, nivelPuntaje } from "./bandeja";
+import { accionesPara, antiguedadAviso, contarPorEstado, filtrarOfertas, nivelPuntaje } from "./bandeja";
 import type { Oferta } from "./types";
 
 function oferta(cambios: Partial<Oferta> = {}): Oferta {
@@ -79,4 +79,14 @@ test("nivelPuntaje separa alto, medio y bajo", () => {
   expect(nivelPuntaje(59)).toBe("medio");
   expect(nivelPuntaje(39)).toBe("bajo");
   expect(nivelPuntaje(null)).toBe("bajo");
+});
+
+test("antiguedadAviso dice hace cuánto se publicó y marca lo que pasa de 14 días", () => {
+  const hoy = new Date(2026, 9, 2, 18, 0);
+  expect(antiguedadAviso("2026-10-02", hoy)).toEqual({ texto: "Publicada hoy", vieja: false });
+  expect(antiguedadAviso("2026-10-01", hoy)).toEqual({ texto: "Publicada ayer", vieja: false });
+  expect(antiguedadAviso("2026-09-18", hoy)).toEqual({ texto: "Publicada hace 14 días", vieja: false });
+  expect(antiguedadAviso("2026-09-17", hoy)).toEqual({ texto: "Publicada hace 15 días", vieja: true });
+  expect(antiguedadAviso(null, hoy)).toBeNull();
+  expect(antiguedadAviso("1790970934", hoy)).toBeNull();
 });

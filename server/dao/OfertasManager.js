@@ -6,6 +6,8 @@ export const DIAS_EN_ARCHIVO = 30
 // Las "nuevas" que nunca se tocaron se borran directo: para entonces el portal ya las suele cerrar.
 export const DIAS_NUEVA_SIN_TOCAR = 30
 const DIAS_CORREOS_PROCESADOS = 60
+// Un aviso publicado hace más de esto ya no vale la pena (el mismo límite que el prefiltro de busqueda/normalizar.js).
+export const DIAS_AVISO_VIEJO = 30
 
 const haceDias = (ahora, dias) => new Date(ahora.getTime() - dias * DIA).toISOString()
 
@@ -175,14 +177,25 @@ export class OfertasManager {
 
     /**
      * Mantenimiento diario:
+     * 0. Descarta las "nuevas" sin tocar cuyo aviso se publicó hace más de DIAS_AVISO_VIEJO días,
+     *    con una nota 🤖 (las que marcaste o en las que te postulaste no se tocan).
      * 1. Archiva las ofertas cerradas (descartada, rechazada, oferta) hace DIAS_PARA_ARCHIVAR días.
      * 2. Borra las archivadas hace DIAS_EN_ARCHIVO días y las "nuevas" sin tocar hace DIAS_NUEVA_SIN_TOCAR,
      *    dejando en ofertas_borradas su url (para no volver a evaluarlas) y cómo terminaron.
      * 3. Olvida los correos procesados (y los fallidos) viejos.
-     * @returns {{ archivadas: number, borradas: number }}
+     * @returns {{ viejas: number, archivadas: number, borradas: number }}
      */
     limpiar(ahora = new Date()) {
         const iso = ahora.toISOString()
+        const nota = `🤖 ${iso.slice(8, 10)}/${iso.slice(5, 7)}: descartada sola, el aviso tiene más de ${DIAS_AVISO_VIEJO} días.`
+        const viejas = this.db.prepare(`
+            UPDATE ofertas SET estado = 'descartada', estado_actualizado = ?,
+                notas = CASE WHEN notas IS NULL OR notas = '' THEN ? ELSE notas || char(10) || ? END
+            WHERE estado = 'nueva' AND archivada IS NULL
+              AND fecha_publicacion GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*'
+              AND substr(fecha_publicacion, 1, 10) < ?
+        `).run(iso, nota, nota, haceDias(ahora, DIAS_AVISO_VIEJO).slice(0, 10)).changes
+
         const cerrados = ESTADOS_CERRADOS.map(() => '?').join(', ')
         const archivadas = this.db.prepare(`
             UPDATE ofertas SET archivada = ?
@@ -206,7 +219,7 @@ export class OfertasManager {
             this.db.exec('ROLLBACK')
             throw error
         }
-        return { archivadas, borradas }
+        return { viejas, archivadas, borradas }
     }
 
     /**

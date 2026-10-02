@@ -1,4 +1,4 @@
-import { nivelPuntaje } from "../domain/bandeja";
+import { antiguedadAviso, nivelPuntaje } from "../domain/bandeja";
 import type { Estado, Oferta } from "../domain/types";
 import { AccionesOferta } from "./AccionesOferta";
 
@@ -25,6 +25,7 @@ function fechaCorta(fecha: string): string {
 export function OfertaCard({ oferta, onCambiarEstado, onAbrir }: Props) {
   const nivel = nivelPuntaje(oferta.puntaje);
   const datos = [oferta.empresa, oferta.fuente, oferta.ubicacion?.trim()].filter(Boolean).join(" · ");
+  const antiguedad = antiguedadAviso(oferta.fecha_publicacion);
 
   return (
     <article className="oferta-card">
@@ -48,7 +49,13 @@ export function OfertaCard({ oferta, onCambiarEstado, onAbrir }: Props) {
           {oferta.postular && !oferta.estafa && <span className="etiqueta etiqueta--recomendada">Recomendada</span>}
           {oferta.estafa && <span className="etiqueta etiqueta--estafa">⚠ Posible estafa</span>}
           {oferta.carta && <span className="etiqueta">Carta lista</span>}
-          <span className="oferta-card__fecha">Encontrada el {fechaCorta(oferta.encontrada)}</span>
+          {/* Lo que importa para postular es cuándo se publicó el aviso; cuándo lo encontró el bot queda en el title */}
+          <span
+            className={antiguedad?.vieja ? "oferta-card__fecha oferta-card__fecha--vieja" : "oferta-card__fecha"}
+            title={`Encontrada el ${fechaCorta(oferta.encontrada)}`}
+          >
+            {antiguedad?.texto ?? `Encontrada el ${fechaCorta(oferta.encontrada)}`}
+          </span>
         </div>
 
         {/* Por qué (motivo de Claude) */}

@@ -272,6 +272,12 @@ button {
   color: var(--text-muted);
 }
 
+/* Aviso de más de 14 días: todavía sirve, pero conviene postular rápido o priorizar otros */
+.oferta-card__fecha--vieja {
+  color: var(--status-warning-text);
+  font-weight: 600;
+}
+
 .oferta-card__motivo {
   margin: 10px 0 0;
   font-size: 14px;

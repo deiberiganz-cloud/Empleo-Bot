@@ -93,6 +93,11 @@ const migrar = db => {
     for (const columna of COLUMNAS_AGREGADAS) {
         if (!existentes.has(columna.nombre)) db.exec(`ALTER TABLE ofertas ADD COLUMN ${columna.nombre} ${columna.tipo}`)
     }
+    // Himalayas manda la fecha en segundos Unix y se guardaba tal cual ("1790970934"): la pasamos a AAAA-MM-DD.
+    if (existentes.has('fecha_publicacion')) db.exec(`
+        UPDATE ofertas SET fecha_publicacion = date(CAST(fecha_publicacion AS INTEGER), 'unixepoch')
+        WHERE fecha_publicacion GLOB '[0-9]*' AND fecha_publicacion NOT GLOB '*[^0-9]*' AND length(fecha_publicacion) BETWEEN 9 AND 11
+    `)
     // Las que ya estaban postuladas antes de existir fecha_postulacion: usamos la fecha del último cambio.
     db.exec(`
         UPDATE ofertas SET fecha_postulacion = estado_actualizado
