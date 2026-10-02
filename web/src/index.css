@@ -670,3 +670,22 @@ button {
     flex: 1;
   }
 }
+
+/* ---- Seguimiento: botón "Revisar Gmail ahora" ---- */
+
+.revisar-gmail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.revisar-gmail__estado {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}

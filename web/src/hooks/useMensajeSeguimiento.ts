@@ -3,6 +3,7 @@ import { useState } from "react";
 import { escribirSeguimientoOferta } from "../api/ofertasApi";
 import type { Oferta } from "../domain/types";
 import { useActualizarOfertaEnCache } from "./useActualizarOfertaEnCache";
+import { copiarTexto } from "../utils/copiarTexto";
 
 /**
  * Mensaje de seguimiento de una postulación: Claude lo escribe, se puede retocar y copiar.
@@ -26,7 +27,7 @@ export function useMensajeSeguimiento(oferta: Oferta) {
   });
 
   const copiar = async () => {
-    await navigator.clipboard.writeText(texto);
+    if (!(await copiarTexto(texto))) return;
     setCopiado(true);
     setTimeout(() => setCopiado(false), 2000);
   };

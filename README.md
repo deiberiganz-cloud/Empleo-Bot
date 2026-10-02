@@ -16,7 +16,7 @@ Lo construí para mi propia búsqueda de trabajo. Corre en mi PC y usa Claude a 
 4. **Bandeja**: decido cuáles me interesan y cuáles descarto.
 5. **Carta de presentación**: Claude la escribe con mi perfil y lo que pide la oferta, sin inventar experiencia. La edito y la copio.
 6. **Seguimiento**: un tablero Me interesa → Postulé → Entrevista → Resultado, con la fecha de cada entrevista, un resumen (postulaciones de la semana y tasa de respuesta) y un **recordatorio a los 7 días sin respuesta**, con el mensaje de seguimiento ya escrito.
-7. **Seguimiento automático por Gmail**: cuando LinkedIn confirma que se envió una solicitud, la oferta pasa sola a "Postulé" (si no estaba, se crea). Cuando escribe una empresa a la que me postulé, Claude lee ese correo, lo clasifica (entrevista, rechazo, oferta u otro), mueve la tarjeta y deja una nota con el resumen.
+7. **Seguimiento automático por Gmail**: cuando LinkedIn confirma que se envió una solicitud, la oferta pasa sola a "Postulé" (si no estaba, se crea). Cuando escribe una empresa a la que me postulé, Claude lee ese correo, lo clasifica (entrevista, rechazo, oferta u otro), mueve la tarjeta y deja una nota con el resumen. Corre en la búsqueda diaria de n8n y, mientras la app está abierta, cada 30 minutos (también hay un botón "Revisar Gmail ahora").
 8. **Archivo y limpieza**: lo cerrado pasa al Archivo a los 7 días y se borra a los 30; las ofertas nuevas que nunca toqué se borran a los 30. De lo borrado queda solo la url y cómo terminó, así no se vuelve a evaluar y el historial no se pierde.
 
 ## Cómo funciona

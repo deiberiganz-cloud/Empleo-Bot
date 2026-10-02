@@ -153,6 +153,7 @@ describe('API /api/ofertas', () => {
         servidor = crearApp(manager, {
             escribirCarta: escribirCartaFalsa,
             escribirSeguimiento: async oferta => `Seguimiento de ${oferta.titulo}`,
+            revisarGmail: async () => ({ acciones: [{ titulo: 'X', empresa: 'Y', accion: 'postulada' }], errores: [] }),
         }).listen(0)
         await new Promise(resolve => servidor.once('listening', resolve))
         base = `http://localhost:${servidor.address().port}/api/ofertas`
@@ -245,5 +246,11 @@ describe('API /api/ofertas', () => {
         const { codigo, cuerpo } = await pedir('/historial')
         assert.equal(codigo, 200)
         assert.deepEqual(cuerpo.payload, { postuladas: 0, porEstado: { descartada: 1 } })
+    })
+
+    test('POST /revisar-gmail corre el seguimiento y devuelve las novedades', async () => {
+        const { codigo, cuerpo } = await pedir('/revisar-gmail', { method: 'POST' })
+        assert.equal(codigo, 200)
+        assert.equal(cuerpo.payload.acciones.length, 1)
     })
 })

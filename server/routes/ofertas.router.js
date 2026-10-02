@@ -19,7 +19,7 @@ const errorDeTexto = (valor, campo) => {
 
 // El manager y el escritor de cartas se reciben por parámetro (inyección) en vez de importarlos:
 // así los tests usan una base en memoria y un Claude de mentira, y no hay dependencias circulares.
-export const crearOfertasRouter = (manager, { escribirCarta, escribirSeguimiento }) => {
+export const crearOfertasRouter = (manager, { escribirCarta, escribirSeguimiento, revisarGmail }) => {
     const router = Router()
 
     router.get('/', (req, res) => {
@@ -34,6 +34,16 @@ export const crearOfertasRouter = (manager, { escribirCarta, escribirSeguimiento
         } catch (error) {
             console.error(error)
             res.status(500).json({ status: 'error', error: 'Error al listar las ofertas' })
+        }
+    })
+
+    // Botón "Revisar Gmail ahora": corre el seguimiento por Gmail en el momento.
+    router.post('/revisar-gmail', async (req, res) => {
+        try {
+            res.json({ status: 'success', payload: await revisarGmail() })
+        } catch (error) {
+            console.error(error)
+            res.status(500).json({ status: 'error', error: `No se pudo revisar Gmail: ${error.message}` })
         }
     })
 

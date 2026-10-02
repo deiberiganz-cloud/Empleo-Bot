@@ -1,4 +1,4 @@
-import type { Estado, Historial, Oferta, RespuestaApi } from "../domain/types";
+import type { Estado, Historial, Oferta, RespuestaApi, RevisionGmail } from "../domain/types";
 
 const BASE = "/api/ofertas";
 
@@ -23,6 +23,11 @@ export function listarOfertas(): Promise<Oferta[]> {
 /** Las ofertas del Archivo (cerradas hace 7 días o más; se borran a los 30). */
 export function listarArchivadas(): Promise<Oferta[]> {
   return pedir<Oferta[]>(`${BASE}?archivadas=1`);
+}
+
+/** Revisa Gmail en el momento (la API también lo hace sola cada 30 minutos). */
+export function revisarGmail(): Promise<RevisionGmail> {
+  return pedir<RevisionGmail>(`${BASE}/revisar-gmail`, { method: "POST" });
 }
 
 export function obtenerHistorial(): Promise<Historial> {

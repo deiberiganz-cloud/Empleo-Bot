@@ -1,10 +1,12 @@
 import { DetalleOferta } from "../components/DetalleOferta";
 import { ResumenSeguimiento } from "../components/ResumenSeguimiento";
 import { TarjetaSeguimiento } from "../components/TarjetaSeguimiento";
+import { textoRevision, useRevisarGmail } from "../hooks/useRevisarGmail";
 import { useSeguimiento } from "../hooks/useSeguimiento";
 
 export function SeguimientoPage() {
   const seguimiento = useSeguimiento();
+  const revision = useRevisarGmail();
 
   if (seguimiento.isLoading) {
     return (
@@ -28,6 +30,19 @@ export function SeguimientoPage() {
   return (
     <>
       <ResumenSeguimiento resumen={seguimiento.resumen} />
+
+      {/* Gmail se revisa solo cada 30 minutos; el botón es para no esperar */}
+      <div className="revisar-gmail">
+        <button type="button" className="boton" disabled={revision.isPending} onClick={() => revision.mutate()}>
+          {revision.isPending ? "Revisando Gmail..." : "Revisar Gmail ahora"}
+        </button>
+        <p className="revisar-gmail__estado" role="status">
+          {revision.isPending && <span className="spinner" aria-hidden="true" />}
+          {revision.data && textoRevision(revision.data.acciones.length)}
+          {revision.error && `No se pudo revisar: ${revision.error.message}`}
+          {!revision.data && !revision.error && !revision.isPending && "Se revisa solo cada 30 minutos."}
+        </p>
+      </div>
 
       {seguimiento.errorCambio && (
         <p className="aviso aviso--error" role="alert">

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { escribirCartaOferta, guardarCartaOferta } from "../api/ofertasApi";
 import type { Oferta } from "../domain/types";
 import { useActualizarOfertaEnCache } from "./useActualizarOfertaEnCache";
+import { copiarTexto } from "../utils/copiarTexto";
 
 /**
  * Lógica de la carta de presentación de una oferta.
@@ -37,7 +38,7 @@ export function useCarta(oferta: Oferta) {
   });
 
   const copiar = async () => {
-    await navigator.clipboard.writeText(texto);
+    if (!(await copiarTexto(texto))) return;
     setCopiado(true);
     setTimeout(() => setCopiado(false), 2000);
   };

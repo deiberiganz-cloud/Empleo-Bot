@@ -38,6 +38,12 @@ export interface Oferta {
   archivada: string | null;
 }
 
+/** Lo que cambió el seguimiento por Gmail (/api/ofertas/revisar-gmail). */
+export interface RevisionGmail {
+  acciones: { titulo: string; empresa: string | null; accion: string }[];
+  errores: string[];
+}
+
 /** Totales de toda la búsqueda, incluidas las ofertas ya borradas (/api/ofertas/historial). */
 export interface Historial {
   postuladas: number;
