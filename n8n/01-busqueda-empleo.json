@@ -269,6 +269,32 @@
         1000
       ],
       "id": "c8d2f3b1-7a4e-4b9f-8d62-1b2f3e4a5c72"
+    },
+    {
+      "parameters": {
+        "command": "node C:/Users/Admin/Desktop/empleo-bot/n8n/leer-respuestas.js"
+      },
+      "name": "Seguimiento por Gmail",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2080,
+        400
+      ],
+      "id": "d9e3a4c2-8b5f-4cad-9e73-2c3a4f5b6d83"
+    },
+    {
+      "parameters": {
+        "jsCode": "// leer-respuestas.js imprime qué postulaciones cambiaron: lo sumamos al resumen del día.\nconst seguimiento = JSON.parse($json.stdout);\nreturn [{ json: { ...$('Leer resumen').first().json, seguimiento } }];"
+      },
+      "name": "Resumen del día",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2300,
+        400
+      ],
+      "id": "e0f4b5d3-9c6a-4dbe-8f84-3d4b5a6c7e94"
     }
   ],
   "connections": {
@@ -504,6 +530,28 @@
             "node": "Juntar portales",
             "type": "main",
             "index": 6
+          }
+        ]
+      ]
+    },
+    "Leer resumen": {
+      "main": [
+        [
+          {
+            "node": "Seguimiento por Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Seguimiento por Gmail": {
+      "main": [
+        [
+          {
+            "node": "Resumen del día",
+            "type": "main",
+            "index": 0
           }
         ]
       ]

@@ -24,14 +24,26 @@ export const crearOfertasRouter = (manager, { escribirCarta, escribirSeguimiento
 
     router.get('/', (req, res) => {
         const { estado, tipo } = req.query
+        // ?archivadas=1 lista solo el Archivo; sin él, solo las activas.
+        const archivadas = req.query.archivadas === '1'
         if (estado && !ESTADOS.includes(estado)) {
             return res.status(400).json({ status: 'error', error: errorEstado })
         }
         try {
-            res.json({ status: 'success', payload: manager.listar({ estado, tipo }) })
+            res.json({ status: 'success', payload: manager.listar({ estado, tipo, archivadas }) })
         } catch (error) {
             console.error(error)
             res.status(500).json({ status: 'error', error: 'Error al listar las ofertas' })
+        }
+    })
+
+    // Totales de toda la búsqueda, incluidas las ofertas ya borradas. Va antes de "/:id".
+    router.get('/historial', (req, res) => {
+        try {
+            res.json({ status: 'success', payload: manager.historial() })
+        } catch (error) {
+            console.error(error)
+            res.status(500).json({ status: 'error', error: 'Error al calcular el historial' })
         }
     })
 

@@ -34,10 +34,30 @@ const ESQUEMA = `
         carta              TEXT,
         fecha_postulacion  TEXT,
         fecha_entrevista   TEXT,
-        mensaje_seguimiento TEXT
+        mensaje_seguimiento TEXT,
+        archivada          TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_ofertas_estado ON ofertas (estado);
+
+    -- Lo que queda de una oferta borrada: su url (para no volver a evaluarla) y cómo terminó.
+    CREATE TABLE IF NOT EXISTS ofertas_borradas (
+        url               TEXT PRIMARY KEY,
+        titulo            TEXT,
+        empresa           TEXT,
+        estado_final      TEXT NOT NULL,
+        fecha_postulacion TEXT,
+        borrada           TEXT NOT NULL
+    );
+
+    -- Correos de Gmail que el seguimiento automático ya leyó, para no procesarlos dos veces.
+    CREATE TABLE IF NOT EXISTS correos_procesados (
+        message_id TEXT PRIMARY KEY,
+        procesado  TEXT NOT NULL
+    );
 `
+
+// Estados en los que una oferta ya terminó: a los DIAS_PARA_ARCHIVAR pasan al Archivo.
+export const ESTADOS_CERRADOS = ['descartada', 'rechazada', 'oferta']
 
 // Columnas que se agregaron después de crear la tabla. Si la base es vieja, se suman
 // con ALTER TABLE sin perder los datos (una "migración" chica y a mano).
@@ -46,6 +66,7 @@ const COLUMNAS_AGREGADAS = [
     { nombre: 'fecha_postulacion', tipo: 'TEXT' },
     { nombre: 'fecha_entrevista', tipo: 'TEXT' },
     { nombre: 'mensaje_seguimiento', tipo: 'TEXT' },
+    { nombre: 'archivada', tipo: 'TEXT' },
 ]
 
 const migrar = db => {

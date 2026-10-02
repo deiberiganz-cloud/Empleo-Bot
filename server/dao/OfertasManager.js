@@ -1,4 +1,13 @@
-import { ESTADOS } from '../config/db.js'
+import { ESTADOS, ESTADOS_CERRADOS } from '../config/db.js'
+
+const DIA = 24 * 60 * 60 * 1000
+export const DIAS_PARA_ARCHIVAR = 7
+export const DIAS_EN_ARCHIVO = 30
+// Las "nuevas" que nunca se tocaron se borran directo: para entonces el portal ya las suele cerrar.
+export const DIAS_NUEVA_SIN_TOCAR = 30
+const DIAS_CORREOS_PROCESADOS = 60
+
+const haceDias = (ahora, dias) => new Date(ahora.getTime() - dias * DIA).toISOString()
 
 // SQLite guarda los booleanos como 0/1: los devolvemos como true/false.
 const aOferta = fila => fila && { ...fila, postular: fila.postular === 1, estafa: fila.estafa === 1 }
@@ -10,10 +19,11 @@ export class OfertasManager {
 
     /**
      * Lista ofertas, las más nuevas y mejor puntuadas primero. Los filtros son opcionales.
-     * @param {{ estado?: string, tipo?: string }} filtro
+     * Por defecto deja afuera las archivadas; con `archivadas: true` devuelve solo esas.
+     * @param {{ estado?: string, tipo?: string, archivadas?: boolean }} filtro
      */
     listar(filtro = {}) {
-        const condiciones = []
+        const condiciones = [filtro.archivadas ? 'archivada IS NOT NULL' : 'archivada IS NULL']
         const valores = []
         if (filtro.estado) {
             condiciones.push('estado = ?')
@@ -23,7 +33,7 @@ export class OfertasManager {
             condiciones.push('tipo = ?')
             valores.push(filtro.tipo)
         }
-        const donde = condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : ''
+        const donde = `WHERE ${condiciones.join(' AND ')}`
         const filas = this.db
             .prepare(`SELECT * FROM ofertas ${donde} ORDER BY encontrada DESC, puntaje DESC, id DESC`)
             .all(...valores)
@@ -31,11 +41,22 @@ export class OfertasManager {
     }
 
     /**
-     * Todas las url guardadas, para saber qué ofertas ya se evaluaron.
+     * Todas las url ya vistas (guardadas o borradas), para no volver a evaluarlas.
      * @returns {Set<string>}
      */
     urlsGuardadas() {
-        return new Set(this.db.prepare('SELECT url FROM ofertas').all().map(fila => fila.url))
+        return new Set(this.db.prepare('SELECT url FROM ofertas UNION SELECT url FROM ofertas_borradas').all().map(fila => fila.url))
+    }
+
+    obtenerPorUrl(url) {
+        return aOferta(this.db.prepare('SELECT * FROM ofertas WHERE url = ?').get(url)) ?? null
+    }
+
+    /**
+     * Ofertas que esperan respuesta de una empresa (para buscar sus correos).
+     */
+    enProceso() {
+        return this.db.prepare(`SELECT * FROM ofertas WHERE estado IN ('postulada', 'entrevista', 'oferta')`).all().map(aOferta)
     }
 
     obtenerPorId(id) {
@@ -46,14 +67,14 @@ export class OfertasManager {
      * Cambia el estado de una oferta y guarda cuándo cambió.
      * @returns la oferta actualizada, o null si no existe
      */
-    cambiarEstado(id, estado) {
+    cambiarEstado(id, estado, ahora = new Date().toISOString()) {
         if (!ESTADOS.includes(estado)) throw new Error(`Estado inválido: ${estado}`)
-        const ahora = new Date().toISOString()
         // La primera vez que pasa a "postulada" se anota la fecha de postulación (para el
         // recordatorio de 7 días y el resumen). Si después vuelve atrás y adelante, no se pisa.
+        // Si estaba archivada y se le cambia el estado, vuelve a estar activa.
         const resultado = this.db.prepare(`
             UPDATE ofertas
-            SET estado = ?, estado_actualizado = ?,
+            SET estado = ?, estado_actualizado = ?, archivada = NULL,
                 fecha_postulacion = CASE WHEN ? = 'postulada' THEN COALESCE(fecha_postulacion, ?) ELSE fecha_postulacion END
             WHERE id = ?
         `).run(estado, ahora, estado, ahora, id)
@@ -91,6 +112,80 @@ export class OfertasManager {
      */
     guardarSeguimiento(id, mensaje) {
         return this.#actualizarCampo(id, 'mensaje_seguimiento', mensaje)
+    }
+
+    /**
+     * Agrega una línea al final de las notas (las del seguimiento automático), sin borrar lo que había.
+     * @returns la oferta actualizada, o null si no existe
+     */
+    agregarNota(id, linea) {
+        const resultado = this.db.prepare(`
+            UPDATE ofertas SET notas = CASE WHEN notas IS NULL OR notas = '' THEN ? ELSE notas || char(10) || ? END
+            WHERE id = ?
+        `).run(linea, linea, id)
+        if (resultado.changes === 0) return null
+        return this.obtenerPorId(id)
+    }
+
+    yaProcesado(messageId) {
+        return !!this.db.prepare('SELECT 1 FROM correos_procesados WHERE message_id = ?').get(messageId)
+    }
+
+    marcarProcesado(messageId, ahora = new Date().toISOString()) {
+        this.db.prepare('INSERT OR IGNORE INTO correos_procesados (message_id, procesado) VALUES (?, ?)').run(messageId, ahora)
+    }
+
+    /**
+     * Mantenimiento diario:
+     * 1. Archiva las ofertas cerradas (descartada, rechazada, oferta) hace DIAS_PARA_ARCHIVAR días.
+     * 2. Borra las archivadas hace DIAS_EN_ARCHIVO días y las "nuevas" sin tocar hace DIAS_NUEVA_SIN_TOCAR,
+     *    dejando en ofertas_borradas su url (para no volver a evaluarlas) y cómo terminaron.
+     * 3. Olvida los correos procesados viejos.
+     * @returns {{ archivadas: number, borradas: number }}
+     */
+    limpiar(ahora = new Date()) {
+        const iso = ahora.toISOString()
+        const cerrados = ESTADOS_CERRADOS.map(() => '?').join(', ')
+        const archivadas = this.db.prepare(`
+            UPDATE ofertas SET archivada = ?
+            WHERE archivada IS NULL AND estado IN (${cerrados}) AND COALESCE(estado_actualizado, encontrada) <= ?
+        `).run(iso, ...ESTADOS_CERRADOS, haceDias(ahora, DIAS_PARA_ARCHIVAR)).changes
+
+        const paraBorrar = `archivada <= ? OR (estado = 'nueva' AND archivada IS NULL AND encontrada <= ?)`
+        const limites = [haceDias(ahora, DIAS_EN_ARCHIVO), haceDias(ahora, DIAS_NUEVA_SIN_TOCAR).slice(0, 10)]
+        let borradas = 0
+        this.db.exec('BEGIN')
+        try {
+            this.db.prepare(`
+                INSERT OR REPLACE INTO ofertas_borradas (url, titulo, empresa, estado_final, fecha_postulacion, borrada)
+                SELECT url, titulo, empresa, estado, fecha_postulacion, ? FROM ofertas WHERE ${paraBorrar}
+            `).run(iso, ...limites)
+            borradas = this.db.prepare(`DELETE FROM ofertas WHERE ${paraBorrar}`).run(...limites).changes
+            this.db.prepare('DELETE FROM correos_procesados WHERE procesado <= ?').run(haceDias(ahora, DIAS_CORREOS_PROCESADOS))
+            this.db.exec('COMMIT')
+        } catch (error) {
+            this.db.exec('ROLLBACK')
+            throw error
+        }
+        return { archivadas, borradas }
+    }
+
+    /**
+     * Totales de toda la historia (activas + borradas), para ver cómo viene la búsqueda.
+     * No cuenta las "nuevas": solo las que se llegaron a mover.
+     */
+    historial() {
+        const filas = this.db.prepare(`
+            SELECT estado, COUNT(*) AS cantidad FROM (
+                SELECT estado FROM ofertas
+                UNION ALL SELECT estado_final FROM ofertas_borradas
+            ) WHERE estado != 'nueva' GROUP BY estado
+        `).all()
+        const { cantidad: postuladas } = this.db.prepare(`
+            SELECT (SELECT COUNT(*) FROM ofertas WHERE fecha_postulacion IS NOT NULL)
+                 + (SELECT COUNT(*) FROM ofertas_borradas WHERE fecha_postulacion IS NOT NULL) AS cantidad
+        `).get()
+        return { postuladas, porEstado: Object.fromEntries(filas.map(fila => [fila.estado, fila.cantidad])) }
     }
 
     // Solo se llama con nombres de columna fijos de esta clase, nunca con texto del usuario.

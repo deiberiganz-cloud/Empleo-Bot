@@ -74,16 +74,80 @@ describe('OfertasManager', () => {
     })
 })
 
+describe('Archivo y limpieza', () => {
+    let manager
+    const ahora = new Date('2026-11-30T12:00:00Z')
+    const haceDias = dias => new Date(ahora.getTime() - dias * 864e5).toISOString()
+    beforeEach(() => {
+        manager = new OfertasManager(conectarDB(':memory:'))
+    })
+
+    test('archiva las cerradas hace 7 días o más, y no las que siguen en proceso', () => {
+        manager.guardar(ofertaDePrueba({ url: 'u/rechazada', encontrada: '2026-11-01' }))
+        manager.guardar(ofertaDePrueba({ url: 'u/reciente', encontrada: '2026-11-01' }))
+        manager.guardar(ofertaDePrueba({ url: 'u/postulada', encontrada: '2026-11-01' }))
+        const [rechazada, reciente, postulada] = ['u/rechazada', 'u/reciente', 'u/postulada'].map(url => manager.obtenerPorUrl(url))
+        manager.cambiarEstado(rechazada.id, 'rechazada', haceDias(8))
+        manager.cambiarEstado(reciente.id, 'descartada', haceDias(3))
+        manager.cambiarEstado(postulada.id, 'postulada', haceDias(20))
+
+        assert.deepEqual(manager.limpiar(ahora), { archivadas: 1, borradas: 0 })
+        assert.deepEqual(manager.listar({ archivadas: true }).map(o => o.url), ['u/rechazada'])
+        assert.equal(manager.listar().length, 2)
+    })
+
+    test('borra las archivadas hace 30 días y las nuevas sin tocar, pero recuerda sus url', () => {
+        manager.guardar(ofertaDePrueba({ url: 'u/vieja', encontrada: '2026-10-01' }))
+        manager.guardar(ofertaDePrueba({ url: 'u/nueva-reciente', encontrada: '2026-11-25' }))
+        manager.guardar(ofertaDePrueba({ url: 'u/archivada', encontrada: '2026-10-01' }))
+        const archivada = manager.obtenerPorUrl('u/archivada')
+        manager.cambiarEstado(archivada.id, 'postulada', haceDias(50))
+        manager.cambiarEstado(archivada.id, 'rechazada', haceDias(45))
+        manager.limpiar(new Date(ahora.getTime() - 31 * 864e5))
+
+        assert.deepEqual(manager.limpiar(ahora), { archivadas: 0, borradas: 2 })
+        assert.deepEqual(manager.listar().map(o => o.url), ['u/nueva-reciente'])
+        assert.ok(manager.urlsGuardadas().has('u/vieja'))
+        assert.ok(manager.urlsGuardadas().has('u/archivada'))
+        // El historial no pierde la postulación aunque la oferta ya no exista.
+        assert.deepEqual(manager.historial(), { postuladas: 1, porEstado: { rechazada: 1 } })
+    })
+
+    test('cambiarle el estado a una archivada la vuelve a activar', () => {
+        manager.guardar(ofertaDePrueba({ encontrada: '2026-11-01' }))
+        const [oferta] = manager.listar()
+        manager.cambiarEstado(oferta.id, 'descartada', haceDias(10))
+        manager.limpiar(ahora)
+        manager.cambiarEstado(oferta.id, 'me_interesa')
+        assert.equal(manager.listar().length, 1)
+        assert.equal(manager.obtenerPorId(oferta.id).archivada, null)
+    })
+
+    test('agregarNota suma líneas sin borrar las notas propias', () => {
+        manager.guardar(ofertaDePrueba())
+        const [oferta] = manager.listar()
+        manager.guardarNotas(oferta.id, 'Mi nota')
+        assert.equal(manager.agregarNota(oferta.id, '🤖 Nota del bot').notas, 'Mi nota\n🤖 Nota del bot')
+    })
+
+    test('recuerda qué correos ya procesó', () => {
+        assert.equal(manager.yaProcesado('<a@b>'), false)
+        manager.marcarProcesado('<a@b>')
+        assert.equal(manager.yaProcesado('<a@b>'), true)
+    })
+})
+
 describe('API /api/ofertas', () => {
     let servidor
     let base
+    let manager
     // Claude de mentira: devuelve una carta fija, o falla si el título dice "falla".
     const escribirCartaFalsa = async oferta => {
         if (oferta.titulo.includes('falla')) throw new Error('Claude tardó demasiado en responder')
         return `Carta para ${oferta.titulo}`
     }
     beforeEach(async () => {
-        const manager = new OfertasManager(conectarDB(':memory:'))
+        manager = new OfertasManager(conectarDB(':memory:'))
         manager.guardar(ofertaDePrueba())
         manager.guardar(ofertaDePrueba({ url: 'https://ejemplo.com/falla', titulo: 'Oferta que falla' }))
         servidor = crearApp(manager, {
@@ -171,5 +235,15 @@ describe('API /api/ofertas', () => {
         const { codigo, cuerpo } = await enviar('POST', '/1/seguimiento')
         assert.equal(codigo, 200)
         assert.equal(cuerpo.payload.mensaje_seguimiento, 'Seguimiento de Desarrollador Junior')
+    })
+
+    test('GET ?archivadas=1 lista solo el Archivo, y GET /historial da los totales', async () => {
+        await patchEstado(1, 'descartada')
+        manager.limpiar(new Date(Date.now() + 8 * 864e5))
+        assert.deepEqual((await pedir('')).cuerpo.payload.map(o => o.id), [2])
+        assert.deepEqual((await pedir('?archivadas=1')).cuerpo.payload.map(o => o.id), [1])
+        const { codigo, cuerpo } = await pedir('/historial')
+        assert.equal(codigo, 200)
+        assert.deepEqual(cuerpo.payload, { postuladas: 0, porEstado: { descartada: 1 } })
     })
 })

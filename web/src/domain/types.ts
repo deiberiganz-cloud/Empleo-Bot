@@ -34,6 +34,14 @@ export interface Oferta {
   fecha_postulacion: string | null;
   fecha_entrevista: string | null;
   mensaje_seguimiento: string | null;
+  /** Cuándo pasó al Archivo (texto ISO), o null si sigue activa. */
+  archivada: string | null;
+}
+
+/** Totales de toda la búsqueda, incluidas las ofertas ya borradas (/api/ofertas/historial). */
+export interface Historial {
+  postuladas: number;
+  porEstado: Partial<Record<Estado, number>>;
 }
 
 // ─── RESPUESTAS DE LA API ───

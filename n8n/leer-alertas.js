@@ -2,13 +2,12 @@
 // como JSON, en el mismo formato que los portales, para que n8n las sume a la búsqueda.
 // Abre el buzón en modo solo lectura: no borra, no mueve y no marca nada como leído.
 // Uso: node n8n/leer-alertas.js [días]   (por defecto, 2)
-const path = require('path');
+const { hayCredenciales, conGmail, leerTexto } = require('./gmail');
 
-const ENV = path.join(__dirname, '..', '.env');
 const REMITENTES = ['jobalerts-noreply@linkedin.com', 'jobs-noreply@linkedin.com'];
 const FUENTE = 'LinkedIn (alerta)';
 // Líneas de la tarjeta que no son título, empresa ni lugar.
-const RUIDO = /^(solicitar con perfil|esta empresa busca|\d+ personas? (estudi|trabaj)|ver anuncio|promocionado|nuevo$|sé uno de los)/i;
+const RUIDO = /^(solicitar con perfil|esta empresa busca|\d+ personas? (estudi|trabaj)|ver anuncio|promocionado|nuevo$|sé uno de los|se ha enviado tu solicitud|your application was sent)/i;
 
 // Recorre el texto plano del correo: cada oferta termina en la línea "Ver anuncio de empleo: <link>".
 function extraerOfertas(texto, fecha) {
@@ -42,44 +41,25 @@ function extraerOfertas(texto, fecha) {
 }
 
 async function leerAlertas(dias) {
-  const { ImapFlow } = require('imapflow');
-  const { simpleParser } = require('mailparser');
-  const cliente = new ImapFlow({
-    host: 'imap.gmail.com', port: 993, secure: true, logger: false,
-    auth: { user: process.env.GMAIL_USUARIO, pass: process.env.GMAIL_CLAVE_APP.replace(/\s/g, '') },
-  });
-  await cliente.connect();
-  try {
-    // "Todos" (All Mail) para encontrar también las alertas archivadas; el nombre cambia según el idioma.
-    const carpetas = await cliente.list();
-    const todos = carpetas.find(c => c.specialUse === '\\All')?.path || 'INBOX';
-    const candado = await cliente.getMailboxLock(todos, { readOnly: true });
-    try {
-      const desde = new Date(Date.now() - dias * 864e5);
-      const uids = await cliente.search({ since: desde, gmailRaw: `from:(${REMITENTES.join(' OR ')})` }, { uid: true });
-      const ofertas = [];
-      const vistas = new Set();
-      for await (const m of cliente.fetch(uids, { source: true }, { uid: true })) {
-        const correo = await simpleParser(m.source);
-        const fecha = (correo.date || new Date()).toISOString().slice(0, 10);
-        for (const o of extraerOfertas(correo.text, fecha)) {
-          if (vistas.has(o.url)) continue;
-          vistas.add(o.url);
-          ofertas.push(o);
-        }
+  return conGmail(async cliente => {
+    const desde = new Date(Date.now() - dias * 864e5);
+    const uids = await cliente.search({ since: desde, gmailRaw: `from:(${REMITENTES.join(' OR ')})` }, { uid: true });
+    const ofertas = [];
+    const vistas = new Set();
+    for (const uid of uids) {
+      const { texto, fecha } = await leerTexto(cliente, uid);
+      for (const o of extraerOfertas(texto, fecha.toISOString().slice(0, 10))) {
+        if (vistas.has(o.url)) continue;
+        vistas.add(o.url);
+        ofertas.push(o);
       }
-      return ofertas;
-    } finally {
-      candado.release();
     }
-  } finally {
-    await cliente.logout();
-  }
+    return ofertas;
+  });
 }
 
 async function main() {
-  try { process.loadEnvFile(ENV); } catch { /* sin .env: se avisa abajo */ }
-  if (!process.env.GMAIL_USUARIO || !process.env.GMAIL_CLAVE_APP) {
+  if (!hayCredenciales()) {
     // Sin credenciales no cortamos la búsqueda diaria: devolvemos cero alertas y avisamos.
     console.error('Falta GMAIL_USUARIO o GMAIL_CLAVE_APP en .env: se saltean las alertas de Gmail.');
     console.log('[]');

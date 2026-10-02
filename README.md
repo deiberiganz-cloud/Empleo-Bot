@@ -16,6 +16,8 @@ Lo construí para mi propia búsqueda de trabajo. Corre en mi PC y usa Claude a 
 4. **Bandeja**: decido cuáles me interesan y cuáles descarto.
 5. **Carta de presentación**: Claude la escribe con mi perfil y lo que pide la oferta, sin inventar experiencia. La edito y la copio.
 6. **Seguimiento**: un tablero Me interesa → Postulé → Entrevista → Resultado, con la fecha de cada entrevista, un resumen (postulaciones de la semana y tasa de respuesta) y un **recordatorio a los 7 días sin respuesta**, con el mensaje de seguimiento ya escrito.
+7. **Seguimiento automático por Gmail**: cuando LinkedIn confirma que se envió una solicitud, la oferta pasa sola a "Postulé" (si no estaba, se crea). Cuando escribe una empresa a la que me postulé, Claude lee ese correo, lo clasifica (entrevista, rechazo, oferta u otro), mueve la tarjeta y deja una nota con el resumen.
+8. **Archivo y limpieza**: lo cerrado pasa al Archivo a los 7 días y se borra a los 30; las ofertas nuevas que nunca toqué se borran a los 30. De lo borrado queda solo la url y cómo terminó, así no se vuelve a evaluar y el historial no se pierde.
 
 ## Cómo funciona
 
@@ -49,6 +51,8 @@ Lo construí para mi propia búsqueda de trabajo. Corre en mi PC y usa Claude a 
 - **Cambios optimistas en la UI.** La tarjeta cambia de columna al instante y vuelve atrás si la API falla.
 - **Accesibilidad.** Colores con contraste AA, el estado nunca se comunica solo con color, y el panel de detalle se navega con teclado (foco y Escape).
 - **Alertas por correo, nunca scraping.** LinkedIn prohíbe el scraping, así que se leen sus alertas de empleo por IMAP. El buzón se abre en modo solo lectura (no se marca nada como leído) y de cada link se guarda solo el id de la oferta: el link del correo trae tokens de inicio de sesión.
+- **El correo decide solo cuando es seguro.** La confirmación de LinkedIn mueve la tarjeta sin IA. Las respuestas de las empresas las clasifica Claude, pero solo se avanza (o se cierra con un rechazo): nunca retrocede, cada correo se procesa una sola vez y, si Claude falla, se reintenta al día siguiente. Solo se bajan completos los correos que nombran a una empresa en proceso.
+- **Borrar sin olvidar.** Una tabla mínima (`ofertas_borradas`) guarda la url y el estado final de lo borrado: la base no crece sin límite y el bot no vuelve a mostrar lo que ya vi.
 - **Privacidad.** Mis datos (`data/`, `perfil.md`, `.env`) nunca entran al repo. El perfil de ejemplo está en `perfil.example.md`.
 
 ## Cómo correrlo
@@ -75,7 +79,7 @@ cd web && npm install && npm run build
 ## Tests
 
 ```bash
-npm test                # lectura de alertas de Gmail
+npm test                # alertas y seguimiento por Gmail (correos inventados y un Claude de mentira)
 cd server && npm test   # API, manager, migraciones y escritores de texto
 cd web && npm test      # filtros, tablero, tarjetas y panel de detalle
 ```

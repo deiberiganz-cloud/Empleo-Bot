@@ -1,4 +1,4 @@
-import type { Estado, Oferta, RespuestaApi } from "../domain/types";
+import type { Estado, Historial, Oferta, RespuestaApi } from "../domain/types";
 
 const BASE = "/api/ofertas";
 
@@ -18,6 +18,15 @@ async function pedir<T>(url: string, opciones?: RequestInit): Promise<T> {
 
 export function listarOfertas(): Promise<Oferta[]> {
   return pedir<Oferta[]>(BASE);
+}
+
+/** Las ofertas del Archivo (cerradas hace 7 días o más; se borran a los 30). */
+export function listarArchivadas(): Promise<Oferta[]> {
+  return pedir<Oferta[]>(`${BASE}?archivadas=1`);
+}
+
+export function obtenerHistorial(): Promise<Historial> {
+  return pedir<Historial>(`${BASE}/historial`);
 }
 
 /** Le pide a la API que Claude escriba la carta (tarda unos segundos). Devuelve la oferta con la carta. */

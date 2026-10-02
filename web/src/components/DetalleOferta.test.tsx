@@ -27,6 +27,7 @@ const oferta: Oferta = {
   fecha_postulacion: null,
   fecha_entrevista: null,
   mensaje_seguimiento: null,
+  archivada: null,
 };
 
 function mostrar(datos: Oferta = oferta) {

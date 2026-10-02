@@ -105,13 +105,16 @@ async function main() {
     }
   }
 
+  // Mantenimiento diario: archiva lo cerrado y borra lo viejo (ver OfertasManager.limpiar).
+  const limpieza = manager.limpiar();
+
   const todas = manager.listar();
   generarReporte(todas);
   const buenas = todas.filter(o => o.encontrada === hoy && esBuena(o))
     .sort((a, b) => b.puntaje - a.puntaje);
   console.log(JSON.stringify({ recibidas: entrada.length, evaluadas: nuevas.length, buenasHoy: buenas.length,
     top: buenas.slice(0, 10).map(o => ({ puntaje: o.puntaje, titulo: o.titulo, empresa: o.empresa, url: o.url })),
-    reporte: REPORTE, errores }));
+    reporte: REPORTE, limpieza, errores }));
 }
 
 main().catch(e => {

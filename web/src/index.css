@@ -535,6 +535,20 @@ button {
   color: var(--text-muted);
 }
 
+/* El historial del Archivo tiene cuatro números. */
+.resumen--cuatro {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+/* ---- Archivo ---- */
+
+.archivo {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
 /* ---- Seguimiento: tablero ---- */
 
 .tablero {
@@ -626,6 +640,10 @@ button {
 /* ---- Celular ---- */
 
 @media (max-width: 960px) {
+  .resumen--cuatro {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .tablero {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -633,7 +651,8 @@ button {
 
 @media (max-width: 560px) {
   .tablero,
-  .resumen {
+  .resumen,
+  .resumen--cuatro {
     grid-template-columns: 1fr;
   }
 
