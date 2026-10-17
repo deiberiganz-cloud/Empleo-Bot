@@ -8,11 +8,12 @@ const carpetaServer = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 export const RUTA_DB_POR_DEFECTO = path.join(carpetaServer, '..', 'data', 'empleo.db')
 
 // Todos los estados posibles de una oferta, del primero al último.
-// Los de seguimiento (entrevista, oferta, rechazada) se usan en la etapa C.
-export const ESTADOS = ['nueva', 'me_interesa', 'descartada', 'postulada', 'entrevista', 'oferta', 'rechazada']
+// "por_postular": la aceptaste y el robot de postulación la tiene en la fila (todavía no se envió).
+export const ESTADOS = ['nueva', 'me_interesa', 'por_postular', 'descartada', 'postulada', 'entrevista', 'oferta', 'rechazada']
 
-const ESQUEMA = `
-    CREATE TABLE IF NOT EXISTS ofertas (
+// La tabla de ofertas, con el nombre que se pida: la migración la vuelve a crear con otro nombre.
+const tablaOfertas = nombre => `
+    CREATE TABLE IF NOT EXISTS ${nombre} (
         id                 INTEGER PRIMARY KEY AUTOINCREMENT,
         url                TEXT    NOT NULL UNIQUE,
         titulo             TEXT    NOT NULL,
@@ -37,7 +38,10 @@ const ESQUEMA = `
         mensaje_seguimiento TEXT,
         archivada          TEXT,
         mensaje_corto      TEXT
-    );
+    );`
+
+const ESQUEMA = `
+    ${tablaOfertas('ofertas')}
     CREATE INDEX IF NOT EXISTS idx_ofertas_estado ON ofertas (estado);
 
     -- Lo que queda de una oferta borrada: su url (para no volver a evaluarla) y cómo terminó.
@@ -88,6 +92,35 @@ const COLUMNAS_AGREGADAS = [
     { nombre: 'mensaje_corto', tipo: 'TEXT' },
 ]
 
+/**
+ * El CHECK de estado no se puede cambiar con ALTER TABLE. Si la base es de antes de un estado nuevo
+ * (por ejemplo "por_postular"), se crea la tabla de nuevo con todos los estados y se copian los datos.
+ */
+const rehacerSiFaltanEstados = db => {
+    const faltaAlguno = () => {
+        const { sql } = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'ofertas'").get()
+        return ESTADOS.some(estado => !sql.includes(`'${estado}'`))
+    }
+    if (!faltaAlguno()) return
+    db.exec('BEGIN IMMEDIATE')
+    try {
+        // Otro proceso (la búsqueda, Gmail) pudo haberla rehecho mientras esperábamos el candado.
+        if (faltaAlguno()) {
+            const columnas = db.prepare('PRAGMA table_info(ofertas)').all().map(columna => columna.name).join(', ')
+            db.exec('DROP TABLE IF EXISTS ofertas_rehecha')
+            db.exec(tablaOfertas('ofertas_rehecha'))
+            db.exec(`INSERT INTO ofertas_rehecha (${columnas}) SELECT ${columnas} FROM ofertas`)
+            db.exec('DROP TABLE ofertas')
+            db.exec('ALTER TABLE ofertas_rehecha RENAME TO ofertas')
+            db.exec('CREATE INDEX IF NOT EXISTS idx_ofertas_estado ON ofertas (estado)')
+        }
+        db.exec('COMMIT')
+    } catch (error) {
+        db.exec('ROLLBACK')
+        throw error
+    }
+}
+
 const migrar = db => {
     const existentes = new Set(db.prepare('PRAGMA table_info(ofertas)').all().map(columna => columna.name))
     for (const columna of COLUMNAS_AGREGADAS) {
@@ -98,6 +131,7 @@ const migrar = db => {
         UPDATE ofertas SET fecha_publicacion = date(CAST(fecha_publicacion AS INTEGER), 'unixepoch')
         WHERE fecha_publicacion GLOB '[0-9]*' AND fecha_publicacion NOT GLOB '*[^0-9]*' AND length(fecha_publicacion) BETWEEN 9 AND 11
     `)
+    rehacerSiFaltanEstados(db)
     // Las que ya estaban postuladas antes de existir fecha_postulacion: usamos la fecha del último cambio.
     db.exec(`
         UPDATE ofertas SET fecha_postulacion = estado_actualizado

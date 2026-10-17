@@ -8,6 +8,7 @@ const UN_DIA_MS = 24 * 60 * 60 * 1000;
 /** Columnas del tablero de Seguimiento, de izquierda a derecha. */
 export const COLUMNAS: { id: string; titulo: string; estados: Estado[] }[] = [
   { id: "me_interesa", titulo: "Me interesa", estados: ["me_interesa"] },
+  { id: "por_postular", titulo: "Por postular", estados: ["por_postular"] },
   { id: "postulada", titulo: "Postulé", estados: ["postulada"] },
   { id: "entrevista", titulo: "Entrevista", estados: ["entrevista"] },
   { id: "resultado", titulo: "Resultado", estados: ["oferta", "rechazada"] },

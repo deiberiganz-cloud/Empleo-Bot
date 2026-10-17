@@ -3,6 +3,7 @@
 export type Estado =
   | "nueva"
   | "me_interesa"
+  | "por_postular"
   | "descartada"
   | "postulada"
   | "entrevista"

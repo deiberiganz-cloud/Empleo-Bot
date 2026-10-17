@@ -68,7 +68,11 @@ test("contarPorEstado cuenta cada estado", () => {
 });
 
 test("accionesPara da los botones de cada pestaña", () => {
-  expect(accionesPara("nueva").map((a) => a.destino)).toEqual(["descartada", "me_interesa", "postulada"]);
+  expect(accionesPara("nueva").map((a) => a.destino)).toEqual(["descartada", "me_interesa", "postulada", "por_postular"]);
+  expect(accionesPara("me_interesa").map((a) => a.destino)).toEqual(["descartada", "postulada", "por_postular"]);
+  expect(accionesPara("por_postular").map((a) => a.destino)).toEqual(["me_interesa", "postulada"]);
+  // "Aceptar" es el paso principal: manda la oferta a la fila del robot de postulación.
+  expect(accionesPara("nueva").find((a) => a.principal)?.destino).toBe("por_postular");
   expect(accionesPara("descartada").map((a) => a.destino)).toEqual(["nueva"]);
   expect(accionesPara("postulada").map((a) => a.destino)).toEqual(["me_interesa", "rechazada", "entrevista"]);
   expect(accionesPara("entrevista").map((a) => a.destino)).toEqual(["postulada", "rechazada", "oferta"]);

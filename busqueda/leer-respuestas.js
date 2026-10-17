@@ -14,7 +14,7 @@ const GENERICAS = new Set(['the', 'grupo', 'group', 'tech', 'digital', 'global',
   'software', 'vacantes', 'trabajo', 'empleo', 'talent', 'hired', 'jobs', 'team', 'linkedin']);
 const AVANCE = { postulada: 1, entrevista: 2, oferta: 3 };
 const ESTADO_POR_TIPO = { entrevista: 'entrevista', oferta: 'oferta', rechazo: 'rechazada' };
-const SIN_POSTULAR = ['nueva', 'me_interesa', 'descartada'];
+const SIN_POSTULAR = ['nueva', 'me_interesa', 'por_postular', 'descartada'];
 // Si Claude falla 3 veces con el mismo correo, se deja de intentar: así un correo "raro" no gasta tokens
 // en cada revisión durante una semana.
 const INTENTOS_MAXIMOS = 3;

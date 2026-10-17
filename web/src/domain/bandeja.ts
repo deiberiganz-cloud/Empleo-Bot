@@ -23,6 +23,7 @@ export function contarPorEstado(ofertas: Oferta[]): Record<Estado, number> {
   const conteo: Record<Estado, number> = {
     nueva: 0,
     me_interesa: 0,
+    por_postular: 0,
     descartada: 0,
     postulada: 0,
     entrevista: 0,
@@ -42,12 +43,19 @@ export function accionesPara(estado: Estado): Accion[] {
     case "nueva":
       return [
         { etiqueta: "Descartar", destino: "descartada" },
-        { etiqueta: "Me interesa", destino: "me_interesa", principal: true },
+        { etiqueta: "Me interesa", destino: "me_interesa" },
         { etiqueta: "Postulé", destino: "postulada" },
+        { etiqueta: "✅ Aceptar", destino: "por_postular", principal: true },
       ];
     case "me_interesa":
       return [
         { etiqueta: "Descartar", destino: "descartada" },
+        { etiqueta: "Postulé", destino: "postulada" },
+        { etiqueta: "✅ Aceptar", destino: "por_postular", principal: true },
+      ];
+    case "por_postular":
+      return [
+        { etiqueta: "← Me interesa", destino: "me_interesa" },
         { etiqueta: "Postulé", destino: "postulada", principal: true },
       ];
     case "postulada":
