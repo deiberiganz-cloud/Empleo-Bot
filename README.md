@@ -97,4 +97,4 @@ cd web && npm test      # filtros, tablero, tarjetas y panel de detalle
 
 ## Autor
 
-Deiber Rodríguez · [LinkedIn](https://linkedin.com/in/deiber-rodriguez-4b4872383) · [GitHub](https://github.com/deiberiganz-cloud)
+Deiber Rodríguez · [LinkedIn](https://www.linkedin.com/in/deiber-rodriguez-pi%C3%B1a-4b4872383/) · [GitHub](https://github.com/deiberiganz-cloud)
