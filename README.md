@@ -1,6 +1,6 @@
 # Empleo Bot
 
-Asistente personal de búsqueda de empleo. Cada 12 horas busca ofertas remotas en varios portales, **Claude las evalúa contra mi perfil**, y una app web me deja decidir, escribir la carta de presentación de cada una y seguir las postulaciones hasta el resultado.
+Asistente personal de búsqueda de empleo. Cada 4 horas busca ofertas remotas frescas (de los últimos 5 días) en varios portales, **Claude las evalúa contra mi perfil**, y una app web me deja decidir, escribir la carta de presentación de cada una y seguir las postulaciones hasta el resultado.
 
 Lo construí para mi propia búsqueda de trabajo. Corre en mi PC y usa Claude a través de **Claude Code con la suscripción** (`claude -p`), así que no hay costos de API.
 
@@ -10,7 +10,7 @@ Lo construí para mi propia búsqueda de trabajo. Corre en mi PC y usa Claude a 
 
 ## Qué hace
 
-1. **Busca** (sola cada 12 horas mientras la app está abierta, o con el botón "Buscar ahora"): consulta 6 portales con API o RSS pública (Get on Board, RemoteOK, Remotive, Himalayas, Working Nomads y We Work Remotely) y lee de Gmail las alertas de empleo de LinkedIn.
+1. **Busca** (sola cada 4 horas mientras la app está abierta, o con el botón "Buscar ahora"): consulta 6 portales con API o RSS pública (Get on Board, RemoteOK, Remotive, Himalayas, Working Nomads y We Work Remotely) y lee de Gmail las alertas de empleo de LinkedIn.
 2. **Filtra sin IA**: descarta con reglas los puestos senior, los que piden inglés avanzado y las ofertas repetidas. De ~250 ofertas quedan ~75, y Claude solo ve esas.
 3. **Evalúa con Claude**, en lotes de 20: le pone a cada oferta un puntaje de 0 a 100, el tipo de puesto, si conviene postular, el motivo y si tiene señales de estafa.
 4. **Bandeja**: decido cuáles me interesan y cuáles descarto.
@@ -22,7 +22,7 @@ Lo construí para mi propia búsqueda de trabajo. Corre en mi PC y usa Claude a 
 ## Cómo funciona
 
 ```
- busqueda/buscar.js (la API lo corre cada 12 h o con "Buscar ahora")
+ busqueda/buscar.js (la API lo corre cada 4 h o con "Buscar ahora")
    │  6 portales + alertas de Gmail ──► Normalizar + prefiltro (0 tokens) ──► data/entrada.json
    ▼
  evaluar.js ──► claude -p (lotes de 20) ──► SQLite (data/empleo.db)
@@ -62,7 +62,7 @@ La primera versión fue un flujo de **n8n** (`docs/n8n-version-inicial.json`): p
 
 Cuando el proyecto creció (base de datos propia, app web, seguimiento por Gmail, tests), lo pasé a código para no depender de n8n:
 
-- **Un programa menos abierto.** La API ya está corriendo; ella misma dispara la búsqueda cada 12 horas o con un botón, también desde el celular.
+- **Un programa menos abierto.** La API ya está corriendo; ella misma dispara la búsqueda cada 4 horas o con un botón, también desde el celular.
 - **Una sola versión de la lógica**, con tests y en git. Un flujo de n8n es un JSON grande, difícil de revisar en un commit.
 - **Más robusto.** En el flujo, un portal caído cortaba toda la búsqueda; en código, cada fuente va por su lado, con tiempo máximo de espera.
 
@@ -83,7 +83,7 @@ cd server && npm install && npm run dev
 cd web && npm install && npm run build
 ```
 
-**Buscar a mano:** `npm run buscar` en la raíz (baja los portales, evalúa con Claude e imprime el resumen). Con la API abierta no hace falta: busca sola cada 12 horas.
+**Buscar a mano:** `npm run buscar` en la raíz (baja los portales, evalúa con Claude e imprime el resumen). Con la API abierta no hace falta: busca sola cada 4 horas.
 
 **Alertas de Gmail (opcional):** `npm install` en la raíz y crear `.env` con `GMAIL_USUARIO` y `GMAIL_CLAVE_APP` (una [contraseña de aplicación](https://myaccount.google.com/apppasswords) de Google, que requiere la verificación en 2 pasos). Sin `.env`, la búsqueda sigue funcionando sin las alertas. Prueba: `node busqueda/leer-alertas.js 7`.
 

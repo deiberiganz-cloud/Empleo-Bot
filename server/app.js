@@ -24,7 +24,7 @@ app.listen(PUERTO, () => {
     // Mientras la app está abierta, el seguimiento por Gmail corre solo.
     revisarCadaRato(revisarGmail)
     console.log(`Gmail: se revisa al abrir y cada ${MINUTOS_ENTRE_REVISIONES} minutos`)
-    // Y la búsqueda de ofertas: al abrir, si pasaron 12 horas desde la última, y después cada 12 horas.
+    // Y la búsqueda de ofertas: al abrir, si pasaron 4 horas desde la última, y después cada 4 horas.
     buscarCuandoToque({ buscar: buscador.buscar, ultimaBusqueda: () => manager.ultimaBusqueda() })
     console.log(`Búsqueda de ofertas: sola cada ${HORAS_ENTRE_BUSQUEDAS} horas mientras la app esté abierta`)
 })

@@ -10,7 +10,7 @@ import { CLAVE_OFERTAS } from "./useOfertas";
  *
  * 1. Trae las ofertas archivadas y el historial de toda la búsqueda (incluye lo ya borrado).
  *    Las claves empiezan con "ofertas": cuando se cambia un estado, se refrescan solas.
- * 2. Expone `recuperar` para devolver a "Me interesa" una oferta descartada por error.
+ * 2. Expone `recuperar` para devolver a "Me interesa" una oferta descartada por error o archivada sin revisar.
  *
  * @returns `ofertas`, `tiles` del historial, carga, error y `recuperar`.
  * @example

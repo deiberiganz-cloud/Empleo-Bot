@@ -7,6 +7,7 @@ const DIA = 24 * 60 * 60 * 1000;
 
 /** Cómo terminó la oferta, en palabras. */
 export const FINAL: Partial<Record<Estado, string>> = {
+  nueva: "Sin revisar (aviso viejo)",
   descartada: "La descartaste",
   rechazada: "✖ Rechazo",
   oferta: "✔ Oferta",

@@ -64,7 +64,7 @@ export function ArchivoPage() {
               <span className="etiqueta">{FINAL[oferta.estado] ?? oferta.estado}</span>
               <span className="oferta-card__fecha">Se borra el {fechaBorrado(oferta)}</span>
             </div>
-            {oferta.estado === "descartada" && (
+            {(oferta.estado === "descartada" || oferta.estado === "nueva") && (
               <div className="tarjeta-seguimiento__botones">
                 <button type="button" className="boton boton--chico" onClick={() => archivo.recuperar(oferta.id)}>
                   Recuperar

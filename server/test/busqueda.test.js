@@ -51,14 +51,14 @@ describe('crearBuscador', () => {
 describe('cuándo toca buscar', () => {
     const AHORA = new Date('2026-10-02T20:00:00Z')
 
-    test('toca si nunca se buscó o si pasaron 12 horas', () => {
+    test('toca si nunca se buscó o si pasaron 4 horas', () => {
         assert.equal(tocaBuscar(null, AHORA), true)
-        assert.equal(tocaBuscar({ fecha: '2026-10-02T08:00:00Z' }, AHORA), true)
-        assert.equal(tocaBuscar({ fecha: '2026-10-02T08:00:01Z' }, AHORA), false)
+        assert.equal(tocaBuscar({ fecha: '2026-10-02T16:00:00Z' }, AHORA), true)
+        assert.equal(tocaBuscar({ fecha: '2026-10-02T16:00:01Z' }, AHORA), false)
     })
 
-    test('la próxima es 12 horas después de la última, o null si ya toca', () => {
-        assert.equal(proximaBusqueda({ fecha: '2026-10-02T15:00:00Z' }, AHORA), '2026-10-03T03:00:00.000Z')
+    test('la próxima es 4 horas después de la última, o null si ya toca', () => {
+        assert.equal(proximaBusqueda({ fecha: '2026-10-02T17:00:00Z' }, AHORA), '2026-10-02T21:00:00.000Z')
         assert.equal(proximaBusqueda(null, AHORA), null)
     })
 })

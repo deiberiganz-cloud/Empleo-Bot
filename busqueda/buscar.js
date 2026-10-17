@@ -3,7 +3,7 @@
 // 2. Suma las alertas de LinkedIn que llegan a Gmail.
 // 3. Normaliza y prefiltra sin IA (normalizar.js).
 // 4. Guarda data/entrada.json y Claude evalúa las nuevas (evaluar.js), que anota la búsqueda en la base.
-// Uso: node busqueda/buscar.js   → imprime el resumen en JSON. La app lo corre sola cada 12 horas.
+// Uso: node busqueda/buscar.js   → imprime el resumen en JSON. La app lo corre sola cada 4 horas.
 const fs = require('fs');
 const path = require('path');
 const { hayCredenciales } = require('./gmail');
@@ -131,7 +131,7 @@ async function bajarFuentes(fuentes) {
 /**
  * Corre la búsqueda completa y devuelve el resumen de evaluar.js.
  * Si no respondió ninguna fuente (por ejemplo, sin internet) lanza un error y no anota la búsqueda:
- * así la app lo vuelve a intentar en la próxima vuelta en vez de esperar 12 horas.
+ * así la app lo vuelve a intentar en la próxima vuelta en vez de esperar 4 horas.
  */
 async function buscar({ fuentes = [...PORTALES, ALERTAS] } = {}) {
   const { respuestas, errores, respondieron } = await bajarFuentes(fuentes);

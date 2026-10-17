@@ -79,8 +79,8 @@ export function nivelPuntaje(puntaje: number | null): "alto" | "medio" | "bajo" 
   return "bajo";
 }
 
-/** A partir de cuántos días un aviso ya no es "fresco" (se marca en la tarjeta). Los de más de 30 ni llegan. */
-export const DIAS_AVISO_FRESCO = 14;
+/** A partir de cuántos días un aviso ya no es "fresco" (se marca en la tarjeta). Los de más de 5 se archivan solos. */
+export const DIAS_AVISO_FRESCO = 2;
 
 /**
  * Cuánto hace que se publicó el aviso: "Publicada hoy", "Publicada ayer" o "Publicada hace 5 días".

@@ -3,7 +3,7 @@ import { listarOfertas } from "../api/ofertasApi";
 
 export const CLAVE_OFERTAS = ["ofertas"] as const;
 
-// La API mueve tarjetas sola (Gmail cada 10 minutos, búsqueda cada 12 horas): la pantalla vuelve a
+// La API mueve tarjetas sola (Gmail cada 10 minutos, búsqueda cada 4 horas): la pantalla vuelve a
 // pedir las ofertas cada minuto para mostrarlo sin recargar. Es una consulta chica a la base local.
 const SEGUNDOS_ENTRE_ACTUALIZACIONES = 60;
 

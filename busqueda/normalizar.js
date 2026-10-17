@@ -5,7 +5,7 @@ const SENIOR = /\b(senior|sr\.?|semi ?senior|ssr|lead|staff|principal|manager|di
 const INGLES = /(fluent|advanced|excellent|native|proficient|strong|professional|business|c1|c2|b2)[^.]{0,25}english|english[^.]{0,20}(fluen|advanced|c1|c2|b2|required|proficien)|ingl[eé]s[^.]{0,15}(avanzado|fluido|intermedio|conversacional|c1|c2|b2|excluyente)|\(ingl[eé]s\)/i;
 const HISPANO = /spanish|español|espanol|latam|latin america|latinoam[eé]rica|argentina|south america|sudam[eé]rica|hispan/i;
 // Un aviso publicado hace más de esto probablemente ya está cubierto: ni se le muestra a Claude.
-const DIAS_MAXIMOS = 30;
+const DIAS_MAXIMOS = 5;
 const DIA = 24 * 60 * 60 * 1000;
 
 /**
@@ -20,7 +20,7 @@ function fechaIso(valor) {
 /** true si el aviso se publicó hace más de DIAS_MAXIMOS. Sin fecha válida, se le da el beneficio de la duda. */
 function esViejo(fecha, ahora) {
   const publicada = /^\d{4}-\d{2}-\d{2}$/.test(fecha) ? Date.parse(fecha) : NaN;
-  // Se cuentan días enteros: un aviso de hace justo 30 días todavía pasa.
+  // Se cuentan días enteros: un aviso de hace justo 5 días todavía pasa.
   const hoy = Date.parse(ahora.toISOString().slice(0, 10));
   return !Number.isNaN(publicada) && hoy - publicada > DIAS_MAXIMOS * DIA;
 }

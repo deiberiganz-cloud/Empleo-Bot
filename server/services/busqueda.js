@@ -4,8 +4,8 @@ import { fileURLToPath } from 'node:url'
 
 // La misma búsqueda que se corre a mano (node busqueda/buscar.js): una sola forma de buscar.
 const SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'busqueda', 'buscar.js')
-export const HORAS_ENTRE_BUSQUEDAS = 12
-// Cada cuánto se fija si ya pasaron las 12 horas (no busca cada 30 minutos: solo mira el reloj).
+export const HORAS_ENTRE_BUSQUEDAS = 4
+// Cada cuánto se fija si ya pasaron las 4 horas (no busca cada 30 minutos: solo mira el reloj).
 export const MINUTOS_ENTRE_CONTROLES = 30
 // Una búsqueda con muchas ofertas nuevas tarda unos minutos; si pasa de esto, se corta.
 const MINUTOS_MAXIMOS_POR_BUSQUEDA = 30

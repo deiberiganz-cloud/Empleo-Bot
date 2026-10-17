@@ -13,7 +13,7 @@ const remoteOk = [
 const getOnBoard = {
   data: [{
     attributes: { title: 'Desarrollador Node', remote_modality: 'fully_remote', countries: ['Remote', 'Chile'],
-      description: '<b>Backend</b>', functions: '', desirable: '', published_at: 1790000000,
+      description: '<b>Backend</b>', functions: '', desirable: '', published_at: 1790900000,
       company: { data: { attributes: { name: 'Tres' } } } },
     links: { public_url: 'https://getonbrd.com/3' },
   }],
@@ -41,16 +41,16 @@ test('descarta las repetidas, las que piden inglés avanzado y las que no acepta
   assert.deepStrictEqual(ofertas.map(o => o.url), ['https://x/1']);
 });
 
-test('descarta los avisos de más de 30 días y deja pasar los que no tienen fecha', () => {
+test('descarta los avisos de más de 5 días y deja pasar los que no tienen fecha', () => {
   const aviso = (url, date) => ({ position: 'Soporte', company: 'A', url, description: 'Argentina', date });
   const ofertas = normalizar([
     aviso('https://x/hoy', '2026-10-02T09:00:00+00:00'),
-    aviso('https://x/30-dias', '2026-09-02'),
-    aviso('https://x/31-dias', '2026-09-01'),
+    aviso('https://x/5-dias', '2026-09-27'),
+    aviso('https://x/6-dias', '2026-09-26'),
     aviso('https://x/2025', '2025-10-13'),
     aviso('https://x/sin-fecha', undefined),
   ], AHORA);
-  assert.deepStrictEqual(ofertas.map(o => o.url), ['https://x/hoy', 'https://x/30-dias', 'https://x/sin-fecha']);
+  assert.deepStrictEqual(ofertas.map(o => o.url), ['https://x/hoy', 'https://x/5-dias', 'https://x/sin-fecha']);
 });
 
 test('la fecha de Himalayas (segundos Unix) queda como AAAA-MM-DD', () => {

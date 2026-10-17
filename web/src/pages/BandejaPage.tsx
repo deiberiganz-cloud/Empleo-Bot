@@ -15,7 +15,7 @@ export function BandejaPage() {
 
   return (
     <>
-        {/* La app busca sola cada 12 horas; el botón es para no esperar */}
+        {/* La app busca sola cada 4 horas; el botón es para no esperar */}
         <BarraBusqueda />
 
         <FiltrosBandeja

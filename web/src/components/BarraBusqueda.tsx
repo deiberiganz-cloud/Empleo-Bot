@@ -3,7 +3,7 @@ import { useBusqueda } from "../hooks/useBusqueda";
 
 /**
  * Arriba de la Bandeja: botón "Buscar ahora" y cómo fue la última búsqueda.
- * La app también busca sola cada 12 horas mientras está abierta.
+ * La app también busca sola cada 4 horas mientras está abierta.
  */
 export function BarraBusqueda() {
   const busqueda = useBusqueda();

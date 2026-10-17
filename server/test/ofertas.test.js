@@ -82,20 +82,20 @@ describe('Archivo y limpieza', () => {
         manager = new OfertasManager(conectarDB(':memory:'))
     })
 
-    test('descarta las nuevas con aviso de más de 30 días, con nota, y no toca las que ya moviste', () => {
-        manager.guardar(ofertaDePrueba({ url: 'u/vieja', fecha: '2026-10-15', encontrada: '2026-11-29' }))
+    test('archiva las nuevas con aviso de más de 5 días (o encontradas hace más, si no tienen fecha), con nota', () => {
+        manager.guardar(ofertaDePrueba({ url: 'u/vieja', fecha: '2026-11-24', encontrada: '2026-11-29' }))
         manager.guardar(ofertaDePrueba({ url: 'u/fresca', fecha: '2026-11-25', encontrada: '2026-11-29' }))
-        manager.guardar(ofertaDePrueba({ url: 'u/sin-fecha', encontrada: '2026-11-29' }))
+        manager.guardar(ofertaDePrueba({ url: 'u/sin-fecha-vieja', encontrada: '2026-11-20' }))
+        manager.guardar(ofertaDePrueba({ url: 'u/sin-fecha-fresca', encontrada: '2026-11-29' }))
         manager.guardar(ofertaDePrueba({ url: 'u/me-interesa', fecha: '2026-09-01', encontrada: '2026-11-29' }))
         manager.cambiarEstado(manager.obtenerPorUrl('u/me-interesa').id, 'me_interesa')
 
-        assert.equal(manager.limpiar(ahora).viejas, 1)
+        assert.equal(manager.limpiar(ahora).viejas, 2)
+        assert.deepEqual(manager.listar({ archivadas: true }).map(o => o.url).sort(), ['u/sin-fecha-vieja', 'u/vieja'])
         const vieja = manager.obtenerPorUrl('u/vieja')
-        assert.equal(vieja.estado, 'descartada')
-        assert.match(vieja.notas, /más de 30 días/)
-        assert.equal(manager.obtenerPorUrl('u/fresca').estado, 'nueva')
-        assert.equal(manager.obtenerPorUrl('u/sin-fecha').estado, 'nueva')
-        assert.equal(manager.obtenerPorUrl('u/me-interesa').estado, 'me_interesa')
+        assert.equal(vieja.estado, 'nueva')
+        assert.match(vieja.notas, /archivada sola, el aviso tiene más de 5 días/)
+        assert.deepEqual(manager.listar().map(o => o.url).sort(), ['u/fresca', 'u/me-interesa', 'u/sin-fecha-fresca'])
     })
 
     test('archiva las cerradas hace 7 días o más, y no las que siguen en proceso', () => {
@@ -112,9 +112,9 @@ describe('Archivo y limpieza', () => {
         assert.equal(manager.listar().length, 2)
     })
 
-    test('borra las archivadas hace 30 días y las nuevas sin tocar, pero recuerda sus url', () => {
+    test('borra las archivadas hace 30 días (también las nuevas que se archivaron solas), pero recuerda sus url', () => {
         manager.guardar(ofertaDePrueba({ url: 'u/vieja', encontrada: '2026-10-01' }))
-        manager.guardar(ofertaDePrueba({ url: 'u/nueva-reciente', encontrada: '2026-11-25' }))
+        manager.guardar(ofertaDePrueba({ url: 'u/nueva-reciente', encontrada: '2026-11-28' }))
         manager.guardar(ofertaDePrueba({ url: 'u/archivada', encontrada: '2026-10-01' }))
         const archivada = manager.obtenerPorUrl('u/archivada')
         manager.cambiarEstado(archivada.id, 'postulada', haceDias(50))
@@ -257,7 +257,10 @@ describe('API /api/ofertas', () => {
 
     test('GET ?archivadas=1 lista solo el Archivo, y GET /historial da los totales', async () => {
         await patchEstado(1, 'descartada')
-        manager.limpiar(new Date(Date.now() + 8 * 864e5))
+        const dentroDe8Dias = new Date(Date.now() + 8 * 864e5)
+        // La 2 sigue "nueva": se la marca como encontrada ese día para que no se archive sola por vieja.
+        manager.db.prepare('UPDATE ofertas SET encontrada = ? WHERE id = 2').run(dentroDe8Dias.toISOString().slice(0, 10))
+        manager.limpiar(dentroDe8Dias)
         assert.deepEqual((await pedir('')).cuerpo.payload.map(o => o.id), [2])
         assert.deepEqual((await pedir('?archivadas=1')).cuerpo.payload.map(o => o.id), [1])
         const { codigo, cuerpo } = await pedir('/historial')
