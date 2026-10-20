@@ -40,3 +40,27 @@ test('una base de antes de "por_postular" se rehace sin perder datos y acepta el
     conectarDB(ruta).close()
     fs.rmSync(carpeta, { recursive: true, force: true })
 })
+
+test('una base sin las piezas del postulador recibe la columna de bloqueo y la tabla de intentos, sin perder datos', () => {
+    const carpeta = fs.mkdtempSync(path.join(os.tmpdir(), 'empleo-bot-'))
+    const ruta = path.join(carpeta, 'sin-postulador.db')
+    // Una base de justo antes del postulador: ya conoce "por_postular", pero no tiene bloqueada_motivo.
+    const antes = conectarDB(ruta)
+    antes.exec('ALTER TABLE ofertas DROP COLUMN bloqueada_motivo')
+    antes.exec('DROP TABLE postulaciones_intentos')
+    antes.exec(`INSERT INTO ofertas (id, url, titulo, encontrada, estado, notas) VALUES (3, 'u/3', 'Soporte', '2026-10-17', 'por_postular', 'mi nota')`)
+    antes.close()
+
+    const db = conectarDB(ruta)
+    const manager = new OfertasManager(db)
+    assert.equal(manager.obtenerPorId(3).notas, 'mi nota')
+    assert.equal(manager.obtenerPorId(3).bloqueada_motivo, null)
+    assert.equal(manager.bloquear(3, 'CAPTCHA').bloqueada_motivo, 'CAPTCHA')
+    assert.equal(manager.siguienteParaPostular(), null)
+    manager.registrarIntento({ ofertaId: 3, resultado: 'bloqueada', nota: 'CAPTCHA', duracionMs: 1200 })
+    assert.equal(manager.intentosDelDia(), 1)
+    db.close()
+    // Abrirla otra vez no rompe nada.
+    conectarDB(ruta).close()
+    fs.rmSync(carpeta, { recursive: true, force: true })
+})

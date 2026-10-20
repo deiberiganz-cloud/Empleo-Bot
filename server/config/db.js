@@ -8,7 +8,7 @@ const carpetaServer = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 export const RUTA_DB_POR_DEFECTO = path.join(carpetaServer, '..', 'data', 'empleo.db')
 
 // Todos los estados posibles de una oferta, del primero al último.
-// "por_postular": la aceptaste y el robot de postulación la tiene en la fila (todavía no se envió).
+// "por_postular": la aceptaste y el postulador (Claude con tu Chrome, services/postulador.js) la tiene en la fila.
 export const ESTADOS = ['nueva', 'me_interesa', 'por_postular', 'descartada', 'postulada', 'entrevista', 'oferta', 'rechazada']
 
 // La tabla de ofertas, con el nombre que se pida: la migración la vuelve a crear con otro nombre.
@@ -37,7 +37,8 @@ const tablaOfertas = nombre => `
         fecha_entrevista   TEXT,
         mensaje_seguimiento TEXT,
         archivada          TEXT,
-        mensaje_corto      TEXT
+        mensaje_corto      TEXT,
+        bloqueada_motivo   TEXT
     );`
 
 const ESQUEMA = `
@@ -76,6 +77,19 @@ const ESQUEMA = `
         buenas    INTEGER NOT NULL,
         errores   TEXT    NOT NULL DEFAULT '[]'
     );
+
+    -- Cada vez que el postulador (Claude con Chrome) intentó postular: de acá sale el límite diario.
+    -- "dia" es la fecha local (AAAA-MM-DD) para contar por día; "resultado": postulada, descartada o bloqueada.
+    CREATE TABLE IF NOT EXISTS postulaciones_intentos (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        oferta_id   INTEGER NOT NULL,
+        fecha       TEXT    NOT NULL,
+        dia         TEXT    NOT NULL,
+        resultado   TEXT    NOT NULL,
+        nota        TEXT,
+        duracion_ms INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS idx_intentos_dia ON postulaciones_intentos (dia);
 `
 
 // Estados en los que una oferta ya terminó: a los DIAS_PARA_ARCHIVAR pasan al Archivo.
@@ -90,6 +104,8 @@ const COLUMNAS_AGREGADAS = [
     { nombre: 'mensaje_seguimiento', tipo: 'TEXT' },
     { nombre: 'archivada', tipo: 'TEXT' },
     { nombre: 'mensaje_corto', tipo: 'TEXT' },
+    // Motivo por el que el postulador no pudo postular (CAPTCHA, login, timeout...). NULL = no está bloqueada.
+    { nombre: 'bloqueada_motivo', tipo: 'TEXT' },
 ]
 
 /**

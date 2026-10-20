@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process'
 import path from 'node:path'
 
 // Claude Code instalado en la PC: usa la suscripción, sin API paga.
-const CLAUDE = path.join(process.env.USERPROFILE ?? '', '.local', 'bin', 'claude.exe')
+export const CLAUDE = path.join(process.env.USERPROFILE ?? '', '.local', 'bin', 'claude.exe')
 
 /**
  * Le hace una pregunta a Claude con `claude -p` y devuelve el texto de la respuesta.

@@ -4,6 +4,7 @@ import type { Estado } from "../domain/types";
 import { useCambiarEstado } from "./useCambiarEstado";
 import { useOfertaAbierta } from "./useOfertaAbierta";
 import { useOfertas } from "./useOfertas";
+import { usePostulador } from "./usePostulador";
 
 /**
  * Lógica de la pantalla Seguimiento (la página solo muestra).
@@ -11,6 +12,7 @@ import { useOfertas } from "./useOfertas";
  * 1. Reparte las ofertas en las columnas del tablero (Me interesa → Postulé → Entrevista → Resultado).
  * 2. Calcula el resumen de arriba: postulaciones de la semana, entrevistas y tasa de respuesta.
  * 3. Expone `cambiarEstado` para las flechas y la oferta abierta en el panel de detalle.
+ * 4. Trae el estado del postulador (`postulador`) y `reintentarPostulacion(id)` para las ofertas bloqueadas.
  *
  * @returns `columnas` (cada una con sus ofertas), `resumen`, carga, errores, `cambiarEstado` y el detalle.
  * @example
@@ -20,6 +22,7 @@ export function useSeguimiento() {
   const { data: ofertas = [], isLoading, error: errorCarga, refetch } = useOfertas();
   const mutacion = useCambiarEstado();
   const detalle = useOfertaAbierta(ofertas);
+  const postulador = usePostulador();
 
   const columnas = useMemo(
     () =>
@@ -41,7 +44,9 @@ export function useSeguimiento() {
     errorCarga: errorCarga?.message ?? null,
     reintentar: refetch,
     cambiarEstado: (id: number, destino: Estado) => mutacion.mutate({ id, estado: destino }),
-    errorCambio: mutacion.error?.message ?? null,
+    errorCambio: mutacion.error?.message ?? postulador.errorAlReintentar,
+    postulador: postulador.estado,
+    reintentarPostulacion: postulador.reintentar,
     ...detalle,
   };
 }

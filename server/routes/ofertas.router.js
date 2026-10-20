@@ -19,7 +19,8 @@ const errorDeTexto = (valor, campo) => {
 
 // El manager y el escritor de cartas se reciben por parámetro (inyección) en vez de importarlos:
 // así los tests usan una base en memoria y un Claude de mentira, y no hay dependencias circulares.
-export const crearOfertasRouter = (manager, { escribirCarta, escribirSeguimiento, escribirMensajeCorto, revisarGmail }) => {
+// El postulador (services/postulador.js) es opcional: sin él las rutas del postulador responden vacío.
+export const crearOfertasRouter = (manager, { escribirCarta, escribirSeguimiento, escribirMensajeCorto, revisarGmail }, postulador = null) => {
     const router = Router()
 
     router.get('/', (req, res) => {
@@ -44,6 +45,16 @@ export const crearOfertasRouter = (manager, { escribirCarta, escribirSeguimiento
         } catch (error) {
             console.error(error)
             res.status(500).json({ status: 'error', error: `No se pudo revisar Gmail: ${error.message}` })
+        }
+    })
+
+    // Cómo va el postulador: qué oferta está postulando, cuántas esperan y cuántos intentos van hoy. Va antes de "/:id".
+    router.get('/postulador', (req, res) => {
+        try {
+            res.json({ status: 'success', payload: postulador?.estado() ?? { enCurso: null, enFila: 0, intentosHoy: 0, limite: 0 } })
+        } catch (error) {
+            console.error(error)
+            res.status(500).json({ status: 'error', error: 'Error al leer el estado del postulador' })
         }
     })
 
@@ -84,10 +95,29 @@ export const crearOfertasRouter = (manager, { escribirCarta, escribirSeguimiento
         try {
             const oferta = manager.cambiarEstado(id, estado)
             if (!oferta) return res.status(404).json({ status: 'error', error: 'Oferta no encontrada' })
+            // Apenas se acepta una oferta, el postulador se pone a trabajar (sin esperar: tarda minutos).
+            if (estado === 'por_postular') postulador?.despertar().catch(error => console.error(`Postulador: ${error.message}`))
             res.json({ status: 'success', payload: oferta })
         } catch (error) {
             console.error(error)
             res.status(500).json({ status: 'error', error: 'Error al cambiar el estado' })
+        }
+    })
+
+    // "Reintentar": levanta el bloqueo de una oferta que el postulador no pudo terminar y la vuelve a la fila.
+    router.post('/:id/reintentar-postulacion', (req, res) => {
+        const id = Number(req.params.id)
+        if (!Number.isInteger(id)) return idInvalido(res)
+        try {
+            const oferta = manager.obtenerPorId(id)
+            if (!oferta) return noEncontrada(res)
+            if (oferta.estado !== 'por_postular' || !postulador) {
+                return res.status(409).json({ status: 'error', error: 'Solo se puede reintentar una oferta que está en "Por postular"' })
+            }
+            res.json({ status: 'success', payload: postulador.reintentar(id) })
+        } catch (error) {
+            console.error(error)
+            res.status(500).json({ status: 'error', error: 'Error al reintentar la postulación' })
         }
     })
 

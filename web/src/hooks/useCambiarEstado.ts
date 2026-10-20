@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cambiarEstadoOferta } from "../api/ofertasApi";
 import type { Estado, Oferta } from "../domain/types";
 import { CLAVE_OFERTAS } from "./useOfertas";
+import { CLAVE_POSTULADOR } from "./usePostulador";
 
 /**
  * Cambia el estado de una oferta con actualización optimista.
@@ -34,6 +35,10 @@ export function useCambiarEstado() {
       if (contexto?.anterior) queryClient.setQueryData(CLAVE_OFERTAS, contexto.anterior);
     },
 
-    onSettled: () => queryClient.invalidateQueries({ queryKey: CLAVE_OFERTAS }),
+    // También se refresca el postulador: al aceptar una oferta empieza a trabajar y la pantalla debe enterarse enseguida.
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: CLAVE_OFERTAS });
+      queryClient.invalidateQueries({ queryKey: CLAVE_POSTULADOR });
+    },
   });
 }

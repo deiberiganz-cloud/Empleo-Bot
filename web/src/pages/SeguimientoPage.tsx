@@ -2,6 +2,7 @@ import { DetalleOferta } from "../components/DetalleOferta";
 import { ResumenSeguimiento } from "../components/ResumenSeguimiento";
 import { TarjetaSeguimiento } from "../components/TarjetaSeguimiento";
 import { textoRevision, useRevisarGmail } from "../hooks/useRevisarGmail";
+import { estadoPostulacion, textoIntentos } from "../domain/postulador";
 import { useSeguimiento } from "../hooks/useSeguimiento";
 
 export function SeguimientoPage() {
@@ -57,12 +58,17 @@ export function SeguimientoPage() {
             <h2 id={`columna-${columna.id}`} className="tablero__titulo">
               {columna.titulo.toUpperCase()} <span className="pestanas__conteo">{columna.ofertas.length}</span>
             </h2>
+            {columna.id === "por_postular" && seguimiento.postulador && (
+              <p className="tablero__ayuda">{textoIntentos(seguimiento.postulador)}</p>
+            )}
             {columna.ofertas.map((oferta) => (
               <TarjetaSeguimiento
                 key={oferta.id}
                 oferta={oferta}
                 onCambiarEstado={seguimiento.cambiarEstado}
                 onAbrir={seguimiento.abrirOferta}
+                postulacion={estadoPostulacion(oferta, seguimiento.postulador)}
+                onReintentar={seguimiento.reintentarPostulacion}
               />
             ))}
             {columna.ofertas.length === 0 && <p className="tablero__vacio">Nada por acá todavía.</p>}

@@ -29,6 +29,7 @@ const oferta: Oferta = {
   mensaje_seguimiento: null,
   mensaje_corto: null,
   archivada: null,
+  bloqueada_motivo: null,
 };
 
 function mostrar(datos: Oferta = oferta) {

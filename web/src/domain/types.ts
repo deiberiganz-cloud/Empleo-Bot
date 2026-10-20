@@ -39,6 +39,8 @@ export interface Oferta {
   mensaje_corto: string | null;
   /** Cuándo pasó al Archivo (texto ISO), o null si sigue activa. */
   archivada: string | null;
+  /** Por qué el postulador no pudo postular (CAPTCHA, login, timeout...), o null si no está bloqueada. */
+  bloqueada_motivo: string | null;
 }
 
 /** Lo que cambió el seguimiento por Gmail (/api/ofertas/revisar-gmail). */
@@ -69,6 +71,17 @@ export interface EstadoBusqueda {
   error: string | null;
   /** Cuándo toca la próxima búsqueda automática (texto ISO), o null si toca ya. */
   proxima: string | null;
+}
+
+/** Estado del postulador, el que postula solo las ofertas en "Por postular" (/api/ofertas/postulador). */
+export interface EstadoPostulador {
+  /** La oferta que Claude está postulando ahora, o null. */
+  enCurso: { id: number; titulo: string; empresa: string | null; desde: string } | null;
+  /** Ofertas esperando su turno (sin contar la que está en curso). */
+  enFila: number;
+  intentosHoy: number;
+  /** Máximo de intentos por día. */
+  limite: number;
 }
 
 /** Totales de toda la búsqueda, incluidas las ofertas ya borradas (/api/ofertas/historial). */

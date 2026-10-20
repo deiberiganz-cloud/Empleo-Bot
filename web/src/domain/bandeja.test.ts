@@ -27,6 +27,7 @@ function oferta(cambios: Partial<Oferta> = {}): Oferta {
     mensaje_seguimiento: null,
     mensaje_corto: null,
     archivada: null,
+    bloqueada_motivo: null,
     ...cambios,
   };
 }

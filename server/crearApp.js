@@ -15,13 +15,14 @@ const RUTA_WEB = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '
  * @param escritores { escribirCarta, escribirSeguimiento, escribirMensajeCorto }: funciones async (oferta) => texto,
  *   y revisarGmail: async () => { acciones, errores }
  * @param buscador { buscar, enCurso, ultimoError } (ver services/busqueda.js)
+ * @param postulador { despertar, estado, reintentar } (ver services/postulador.js); opcional
  */
-export const crearApp = (manager, escritores, buscador) => {
+export const crearApp = (manager, escritores, buscador, postulador = null) => {
     const app = express()
     app.use(express.json())
 
     app.get('/api/salud', (req, res) => res.json({ status: 'success', payload: 'ok' }))
-    app.use('/api/ofertas', crearOfertasRouter(manager, escritores))
+    app.use('/api/ofertas', crearOfertasRouter(manager, escritores, postulador))
     app.use('/api/busqueda', crearBusquedaRouter(manager, buscador))
 
     if (fs.existsSync(RUTA_WEB)) app.use(express.static(RUTA_WEB))

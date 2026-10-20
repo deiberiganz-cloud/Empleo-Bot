@@ -10,6 +10,10 @@ export const DIAS_AVISO_VIEJO = 5
 
 const haceDias = (ahora, dias) => new Date(ahora.getTime() - dias * DIA).toISOString()
 
+/** La fecha local como "AAAA-MM-DD" (el límite diario se cuenta por día de la compu, no por UTC). */
+export const diaLocal = fecha =>
+    `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`
+
 // SQLite guarda los booleanos como 0/1: los devolvemos como true/false.
 const aOferta = fila => fila && { ...fila, postular: fila.postular === 1, estafa: fila.estafa === 1 }
 
@@ -72,10 +76,11 @@ export class OfertasManager {
         if (!ESTADOS.includes(estado)) throw new Error(`Estado inválido: ${estado}`)
         // La primera vez que pasa a "postulada" se anota la fecha de postulación (para el
         // recordatorio de 7 días y el resumen). Si después vuelve atrás y adelante, no se pisa.
-        // Si estaba archivada y se le cambia el estado, vuelve a estar activa.
+        // Si estaba archivada y se le cambia el estado, vuelve a estar activa. Y cualquier cambio de
+        // estado levanta el bloqueo del postulador (si vuelve a "por_postular", se reintenta).
         const resultado = this.db.prepare(`
             UPDATE ofertas
-            SET estado = ?, estado_actualizado = ?, archivada = NULL,
+            SET estado = ?, estado_actualizado = ?, archivada = NULL, bloqueada_motivo = NULL,
                 fecha_postulacion = CASE WHEN ? = 'postulada' THEN COALESCE(fecha_postulacion, ?) ELSE fecha_postulacion END
             WHERE id = ?
         `).run(estado, ahora, estado, ahora, id)
@@ -134,6 +139,59 @@ export class OfertasManager {
         `).run(linea, linea, id)
         if (resultado.changes === 0) return null
         return this.obtenerPorId(id)
+    }
+
+    /**
+     * La próxima oferta que le toca al postulador: la que lleva más tiempo en "por_postular"
+     * y no está bloqueada. null si no hay ninguna.
+     */
+    siguienteParaPostular() {
+        return aOferta(this.db.prepare(`
+            SELECT * FROM ofertas
+            WHERE estado = 'por_postular' AND bloqueada_motivo IS NULL AND archivada IS NULL
+            ORDER BY COALESCE(estado_actualizado, encontrada), id LIMIT 1
+        `).get()) ?? null
+    }
+
+    /** Cuántas ofertas esperan al postulador en la fila (en "por_postular" y sin bloquear). */
+    contarEnFila() {
+        return this.db.prepare(`
+            SELECT COUNT(*) AS cantidad FROM ofertas
+            WHERE estado = 'por_postular' AND bloqueada_motivo IS NULL AND archivada IS NULL
+        `).get().cantidad
+    }
+
+    /**
+     * Marca una oferta como bloqueada: el postulador no pudo seguir y dejó el motivo.
+     * Sigue en "por_postular" pero sale de la fila hasta que se la reintente.
+     * @returns la oferta actualizada, o null si no existe
+     */
+    bloquear(id, motivo) {
+        return this.#actualizarCampo(id, 'bloqueada_motivo', motivo)
+    }
+
+    /**
+     * Levanta el bloqueo para que el postulador la vuelva a intentar.
+     * @returns la oferta actualizada, o null si no existe
+     */
+    desbloquear(id) {
+        return this.#actualizarCampo(id, 'bloqueada_motivo', null)
+    }
+
+    /**
+     * Anota un intento del postulador (aunque no haya postulado): cuenta para el límite del día.
+     * @param {{ ofertaId: number, resultado: string, nota?: string, duracionMs?: number }} intento
+     */
+    registrarIntento({ ofertaId, resultado, nota = null, duracionMs = null }, ahora = new Date()) {
+        this.db.prepare(`
+            INSERT INTO postulaciones_intentos (oferta_id, fecha, dia, resultado, nota, duracion_ms)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `).run(ofertaId, ahora.toISOString(), diaLocal(ahora), resultado, nota, duracionMs)
+    }
+
+    /** Cuántos intentos de postulación hubo en el día local de `ahora`. */
+    intentosDelDia(ahora = new Date()) {
+        return this.db.prepare('SELECT COUNT(*) AS cantidad FROM postulaciones_intentos WHERE dia = ?').get(diaLocal(ahora)).cantidad
     }
 
     yaProcesado(messageId) {

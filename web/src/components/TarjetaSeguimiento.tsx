@@ -1,4 +1,5 @@
 import { accionesPara } from "../domain/bandeja";
+import type { EstadoPostulacion } from "../domain/postulador";
 import { formatearEntrevista, necesitaSeguimiento, textoDiasPostulado } from "../domain/seguimiento";
 import type { Estado, Oferta } from "../domain/types";
 
@@ -6,10 +7,13 @@ interface Props {
   oferta: Oferta;
   onCambiarEstado: (id: number, destino: Estado) => void;
   onAbrir: (id: number) => void;
+  /** Cómo va en el postulador (solo las de "Por postular"). */
+  postulacion?: EstadoPostulacion | null;
+  onReintentar?: (id: number) => void;
 }
 
 /** Tarjeta compacta del tablero de Seguimiento. */
-export function TarjetaSeguimiento({ oferta, onCambiarEstado, onAbrir }: Props) {
+export function TarjetaSeguimiento({ oferta, onCambiarEstado, onAbrir, postulacion = null, onReintentar }: Props) {
   const atrasada = necesitaSeguimiento(oferta);
   const dias = textoDiasPostulado(oferta);
 
@@ -32,6 +36,22 @@ export function TarjetaSeguimiento({ oferta, onCambiarEstado, onAbrir }: Props) 
         )}
         {dias && oferta.estado === "postulada" && <span className="oferta-card__fecha">{dias}</span>}
       </div>
+
+      {/* El postulador: Claude postulando con tu Chrome */}
+      {postulacion === "en_curso" && (
+        <p className="tarjeta-seguimiento__postulando" role="status">
+          <span className="spinner spinner--chico" aria-hidden="true" /> 🤖 Postulando…
+        </p>
+      )}
+      {postulacion === "en_fila" && <p className="tarjeta-seguimiento__fila">En fila</p>}
+      {postulacion === "bloqueada" && (
+        <div className="tarjeta-seguimiento__alerta" role="note">
+          <span>⛔ Bloqueada: {oferta.bloqueada_motivo}</span>
+          <button type="button" className="boton-texto" onClick={() => onReintentar?.(oferta.id)}>
+            Reintentar
+          </button>
+        </div>
+      )}
 
       {/* Recordatorio de los 7 días */}
       {atrasada && (

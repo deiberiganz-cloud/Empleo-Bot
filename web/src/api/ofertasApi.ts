@@ -1,4 +1,4 @@
-import type { Estado, EstadoBusqueda, Historial, Oferta, RespuestaApi, RevisionGmail } from "../domain/types";
+import type { Estado, EstadoBusqueda, EstadoPostulador, Historial, Oferta, RespuestaApi, RevisionGmail } from "../domain/types";
 
 const BASE = "/api/ofertas";
 
@@ -38,6 +38,16 @@ export function obtenerBusqueda(): Promise<EstadoBusqueda> {
 /** "Buscar ahora": la API arranca la búsqueda y responde enseguida (la búsqueda tarda unos minutos). */
 export function buscarAhora(): Promise<EstadoBusqueda> {
   return pedir<EstadoBusqueda>("/api/busqueda", { method: "POST" });
+}
+
+/** Cómo va el postulador: qué oferta está postulando, cuántas esperan y cuántos intentos van hoy. */
+export function obtenerPostulador(): Promise<EstadoPostulador> {
+  return pedir<EstadoPostulador>(`${BASE}/postulador`);
+}
+
+/** "Reintentar" una oferta bloqueada: la devuelve a la fila del postulador. */
+export function reintentarPostulacion(id: number): Promise<Oferta> {
+  return pedir<Oferta>(`${BASE}/${id}/reintentar-postulacion`, { method: "POST" });
 }
 
 export function obtenerHistorial(): Promise<Historial> {
