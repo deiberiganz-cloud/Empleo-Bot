@@ -1097,3 +1097,189 @@ button:disabled {
   opacity: 0.5;
   cursor: default;
 }
+
+/* ---- Robot del postulador: camina por el borde del encabezado, por encima de las pestañas ----
+   Es "fantasma" para el mouse (pointer-events: none): los clics llegan a lo que está debajo.
+   Solo el "!" de una postulación bloqueada se puede tocar. */
+
+.encabezado {
+  overflow: hidden;
+}
+
+.robot-carril {
+  --alto-robot: 90px;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.robot-carril__pila {
+  position: absolute;
+  bottom: 0;
+  left: 4px;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+}
+
+.robot-carril__caja {
+  width: 18px;
+  height: 14px;
+  margin-top: -2px;
+}
+
+/* El cartón es cartón en los dos temas: estos colores no cambian con el modo oscuro. */
+.robot-carril__caja rect {
+  fill: #c99a62;
+  stroke: #7a5530;
+  stroke-width: 1.2;
+}
+
+.robot-carril__caja path {
+  fill: #e2c193;
+}
+
+.robot-carril__buzon {
+  position: absolute;
+  bottom: 0;
+  right: 70px;
+  width: 34px;
+  height: 46px;
+  fill: var(--surface);
+  stroke: var(--text-secondary);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.robot-carril__bandera {
+  fill: var(--status-critical);
+  stroke: var(--status-critical);
+}
+
+.robot {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: calc(var(--alto-robot) * 0.4676);
+  height: var(--alto-robot);
+  will-change: transform;
+}
+
+/* Un contorno suave para que no se confunda con las letras del menú cuando pasa por encima. */
+.robot__cuerpo {
+  position: absolute;
+  inset: 0;
+  filter: drop-shadow(0 0 1.5px rgba(255, 255, 255, 0.9)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25));
+}
+
+:root[data-theme="dark"] .robot__cuerpo {
+  filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.9)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}
+
+.robot__cuerpo--espejo {
+  transform: scaleX(-1);
+}
+
+.robot__pose {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+}
+
+.robot__pose--activa {
+  opacity: 1;
+}
+
+.robot--saltando .robot__cuerpo {
+  animation: robot-salto 0.45s ease-in-out 2;
+}
+
+@keyframes robot-salto {
+  50% {
+    translate: 0 calc(var(--alto-robot) * -0.12);
+  }
+}
+
+.robot__engranaje {
+  display: none;
+  position: absolute;
+  width: 28%;
+  left: 52%;
+  top: -6%;
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: robot-girar 1.6s linear infinite;
+}
+
+.robot--trabajando .robot__engranaje {
+  display: block;
+}
+
+@keyframes robot-girar {
+  to {
+    rotate: 360deg;
+  }
+}
+
+.robot__globo {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 100%;
+  margin: 0 0 0 4px;
+  white-space: nowrap;
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.robot--trabajando .robot__globo {
+  display: block;
+}
+
+.robot__alerta {
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  translate: -50% 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--status-critical);
+  background: var(--surface);
+  color: var(--status-critical-text);
+  font-size: 22px;
+  font-weight: 900;
+  cursor: pointer;
+  pointer-events: auto;
+  animation: robot-latido 1s ease-in-out infinite;
+}
+
+@keyframes robot-latido {
+  50% {
+    scale: 1.12;
+  }
+}
+
+@media (max-width: 420px) {
+  .robot-carril {
+    --alto-robot: 64px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .robot__engranaje,
+  .robot__alerta {
+    animation: none;
+  }
+}

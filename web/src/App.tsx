@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { BotonTema } from "./components/BotonTema";
+import { RobotPostulador } from "./components/robot/RobotPostulador";
 import { ArchivoPage } from "./pages/ArchivoPage";
 import { BandejaPage } from "./pages/BandejaPage";
 import { PerfilPage } from "./pages/PerfilPage";
@@ -44,6 +45,8 @@ export function App() {
             </button>
           ))}
         </nav>
+        {/* El robot camina por el borde de abajo mientras el postulador trabaja */}
+        <RobotPostulador onVerBloqueada={() => setVista("seguimiento")} />
       </header>
 
       <main className={vista === "bandeja" || vista === "perfil" ? "contenido" : "contenido contenido--ancho"}>

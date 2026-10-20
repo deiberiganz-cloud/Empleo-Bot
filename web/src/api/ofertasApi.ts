@@ -109,3 +109,8 @@ export function cambiarEstadoOferta(id: number, estado: Estado): Promise<Oferta>
     body: JSON.stringify({ estado }),
   });
 }
+
+/** Una oferta por id (el robot del encabezado la usa para saber cómo terminó una postulación). */
+export function obtenerOferta(id: number): Promise<Oferta> {
+  return pedir<Oferta>(`${BASE}/${id}`);
+}
