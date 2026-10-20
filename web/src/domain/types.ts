@@ -124,3 +124,66 @@ export interface Accion {
   destino: Estado;
   principal?: boolean;
 }
+
+// ─── PERFIL ───
+
+/** Un trabajo o un estudio del perfil (los formularios piden las fechas de cada uno). */
+export interface Experiencia {
+  tipo: "trabajo" | "estudio";
+  titulo: string;
+  lugar: string;
+  desde: string;
+  hasta: string;
+  descripcion: string;
+}
+
+/** Todo lo que se carga en la pestaña Perfil (misma forma que PERFIL_VACIO en server/services/perfil.js). */
+export interface Perfil {
+  personales: {
+    nombre: string;
+    fechaNacimiento: string;
+    ciudad: string;
+    provincia: string;
+    pais: string;
+    direccion: string;
+    codigoPostal: string;
+    dni: string;
+    telefono: string;
+    email: string;
+  };
+  links: { nombre: string; url: string }[];
+  titulo: string;
+  presentacion: string;
+  habilidades: string[];
+  experiencias: Experiencia[];
+  idiomas: { idioma: string; nivel: string }[];
+  busqueda: {
+    puestos: string[];
+    modalidad: string;
+    paises: string;
+    sueldo: string;
+    moneda: string;
+    disponibilidad: string;
+    seniority: string;
+    noSirve: string;
+  };
+  respuestas: { pregunta: string; respuesta: string }[];
+}
+
+/** Un CV subido (el PDF vive en data/perfil/ en la PC). */
+export interface Cv {
+  id: number;
+  nombre: string;
+  nombre_original: string;
+  tamano: number;
+  predeterminado: boolean;
+  subido: string;
+}
+
+/** Lo que devuelve /api/perfil. */
+export interface RespuestaPerfil {
+  datos: Perfil;
+  tieneFoto: boolean;
+  actualizado: string | null;
+  cvs: Cv[];
+}

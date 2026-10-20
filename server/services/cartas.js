@@ -1,9 +1,4 @@
-import fs from 'node:fs'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { preguntarAClaude } from './claude.js'
-
-const RUTA_PERFIL = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'perfil.md')
 
 const SISTEMA =
     'Sos un asesor de empleo que escribe cartas de presentación en español neutro y profesional.' +
@@ -44,11 +39,11 @@ const REGLAS_CORTO = `
 - Sin frases de plantilla ni halagos exagerados. Si se conoce el nombre de la empresa, usalo.`
 
 /**
- * Arma el escritor de cartas. Recibe cómo leer el perfil y cómo preguntarle a Claude
+ * Arma el escritor de cartas. Recibe cómo leer el perfil (de la pestaña Perfil) y cómo preguntarle a Claude
  * (inyección): en los tests se pasa un "Claude de mentira" y no se gasta la suscripción.
  */
 export const crearEscritorDeCartas = ({
-    leerPerfil = () => fs.readFileSync(RUTA_PERFIL, 'utf8'),
+    leerPerfil,
     preguntar = preguntarAClaude,
 } = {}) => async oferta => {
     const datosOferta = [
@@ -69,7 +64,7 @@ export const crearEscritorDeCartas = ({
  * Igual que el de cartas: perfil y Claude se inyectan para poder probarlo sin gastar la suscripción.
  */
 export const crearEscritorDeSeguimiento = ({
-    leerPerfil = () => fs.readFileSync(RUTA_PERFIL, 'utf8'),
+    leerPerfil,
     preguntar = preguntarAClaude,
 } = {}) => async oferta => {
     const dias = oferta.fecha_postulacion
@@ -93,7 +88,7 @@ export const crearEscritorDeSeguimiento = ({
  * Perfil y Claude se inyectan igual que en los otros escritores.
  */
 export const crearEscritorDeMensajeCorto = ({
-    leerPerfil = () => fs.readFileSync(RUTA_PERFIL, 'utf8'),
+    leerPerfil,
     preguntar = preguntarAClaude,
 } = {}) => async oferta => {
     const datosOferta = [

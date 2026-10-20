@@ -6,6 +6,8 @@ const carpetaServer = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 
 // La base vive en empleo-bot/data/, que está fuera del repo (datos personales).
 export const RUTA_DB_POR_DEFECTO = path.join(carpetaServer, '..', 'data', 'empleo.db')
+// Foto y CV que se suben desde la pestaña Perfil (también fuera del repo).
+export const CARPETA_PERFIL_POR_DEFECTO = path.join(carpetaServer, '..', 'data', 'perfil')
 
 // Todos los estados posibles de una oferta, del primero al último.
 // "por_postular": la aceptaste y el postulador (Claude con tu Chrome, services/postulador.js) la tiene en la fila.
@@ -90,6 +92,28 @@ const ESQUEMA = `
         duracion_ms INTEGER
     );
     CREATE INDEX IF NOT EXISTS idx_intentos_dia ON postulaciones_intentos (dia);
+
+    -- La pestaña Perfil: una sola fila (id = 1) con todos los datos del candidato en JSON
+    -- (datos personales, links, experiencia, idiomas, qué busca, respuestas frecuentes).
+    -- "foto" es el nombre del archivo dentro de data/perfil/.
+    CREATE TABLE IF NOT EXISTS perfil (
+        id         INTEGER PRIMARY KEY CHECK (id = 1),
+        datos      TEXT    NOT NULL,
+        foto       TEXT,
+        actualizado TEXT   NOT NULL
+    );
+
+    -- Los CV subidos desde la pestaña Perfil (el PDF vive en data/perfil/). Uno es el predeterminado:
+    -- es el que adjunta el postulador.
+    CREATE TABLE IF NOT EXISTS cvs (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre         TEXT    NOT NULL,
+        archivo        TEXT    NOT NULL,
+        nombre_original TEXT   NOT NULL,
+        tamano         INTEGER NOT NULL,
+        predeterminado INTEGER NOT NULL DEFAULT 0,
+        subido         TEXT    NOT NULL
+    );
 `
 
 // Estados en los que una oferta ya terminó: a los DIAS_PARA_ARCHIVAR pasan al Archivo.

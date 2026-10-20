@@ -1,48 +1,20 @@
-import fs from 'node:fs'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-
-const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
-// perfil.md tiene datos personales: vive en la raíz del repo, fuera de git (ver .gitignore).
-const RUTA_PERFIL = path.join(RAIZ, 'perfil.md')
-// Carpeta donde está el CV; se usa el CV_*.pdf más reciente (así renombrarlo no rompe nada).
-export const CARPETA_CV = 'C:\\Users\\Admin\\Desktop\\Documentacion\\Certificados'
-const PATRON_CV = /^CV_.*\.pdf$/i
 // Una descripción larguísima no aporta más y encarece el prompt.
 const LARGO_MAXIMO_DESCRIPCION = 6000
-
-/** Lee perfil.md en el momento (así los cambios se notan sin reiniciar). Lanza si no existe. */
-export const leerPerfil = (ruta = RUTA_PERFIL) => fs.readFileSync(ruta, 'utf8')
-
-/**
- * Ruta absoluta del CV vigente, o null si no se encuentra.
- * @param {string} carpeta
- */
-export const buscarCv = (carpeta = CARPETA_CV) => {
-    try {
-        const modificado = nombre => fs.statSync(path.join(carpeta, nombre)).mtimeMs
-        const archivo = fs.readdirSync(carpeta).filter(nombre => PATRON_CV.test(nombre))
-            .sort((a, b) => modificado(a) - modificado(b)).at(-1)
-        return archivo ? path.join(carpeta, archivo) : null
-    } catch {
-        return null
-    }
-}
 
 /**
  * El pedido completo para Claude: qué oferta, quién es el candidato, las reglas y cómo responder.
  * Es una función pura (no lee archivos): los datos entran por parámetro.
  *
- * @param {{ oferta: object, perfil: string, rutaCv: string }} datos
+ * @param {{ oferta: object, perfil: string, rutaCv: string, nombre?: string }} datos
  * @returns {string}
  */
-export const armarPrompt = ({ oferta, perfil, rutaCv }) => {
+export const armarPrompt = ({ oferta, perfil, rutaCv, nombre = 'el candidato' }) => {
     const descripcion = (oferta.descripcion ?? '').slice(0, LARGO_MAXIMO_DESCRIPCION) || '(sin descripción guardada: léela en la página)'
     const carta = oferta.carta?.trim()
         ? `CARTA DE PRESENTACIÓN YA ESCRITA (úsala tal cual si el formulario tiene un campo para carta o mensaje):\n${oferta.carta.trim()}`
         : 'No hay carta guardada: si el formulario pide una, escribe una corta (máximo 120 palabras), honesta y basada solo en el perfil.'
 
-    return `Eres el postulador automático de Deiber Rodríguez. Usa la extensión de Chrome (herramientas mcp__claude-in-chrome__*) para postular a UNA oferta de trabajo en su Chrome real, donde ya tiene las sesiones iniciadas.
+    return `Eres el postulador automático de ${nombre}. Usa la extensión de Chrome (herramientas mcp__claude-in-chrome__*) para postular a UNA oferta de trabajo en su Chrome real, donde ya tiene las sesiones iniciadas.
 
 OFERTA
 - URL: ${oferta.url}
@@ -52,7 +24,7 @@ OFERTA
 - Descripción guardada:
 ${descripcion}
 
-PERFIL DEL CANDIDATO (perfil.md)
+PERFIL DEL CANDIDATO (pestaña Perfil)
 ${perfil.trim()}
 
 CV (PDF) para subir cuando el formulario lo pida: ${rutaCv}
@@ -61,7 +33,7 @@ ${carta}
 
 CÓMO TRABAJAR
 1. Llama a tabs_context_mcp y luego abre una pestaña NUEVA con tabs_create_mcp. No toques las pestañas que ya estaban abiertas. Cierra tu pestaña al terminar, pase lo que pase.
-2. Abre la URL de la oferta, llena el formulario y envíalo. Deiber ya eligió esta oferta al tocar "Aceptar": NO decidas si calza, postula aunque no cumpla todos los requisitos.
+2. Abre la URL de la oferta, llena el formulario y envíalo. ${nombre} ya eligió esta oferta al tocar "Aceptar": NO decidas si calza, postula aunque no cumpla todos los requisitos.
 3. Para escribir textos largos usa form_input o javascript_tool; no los escribas tecla por tecla (LinkedIn se come letras). Revisa que el texto quedó completo antes de enviar.
 4. Para subir el CV usa file_upload con la ruta de arriba.
 5. No dispares alert, confirm ni prompt del navegador (bloquean la extensión).
@@ -74,7 +46,7 @@ REGLAS DURAS (responde SIEMPRE con la verdad)
 - No inventes experiencia, años, tecnologías, certificados ni títulos. Si una pregunta de sí/no pide algo que no tiene, responde que no y sigue con el formulario.
 - NUNCA resuelvas un CAPTCHA o verificación de "no soy un robot", NUNCA escribas contraseñas y NUNCA crees cuentas. Si aparece algo así, o la página pide iniciar sesión y no hay sesión abierta, o el formulario es de otra empresa que exige registrarse: detente y responde "bloqueada" explicando el motivo.
 - Si la extensión de Chrome no responde o no está conectada: "bloqueada" con ese motivo.
-- Casillas de consentimiento obligatorias para postular (política de privacidad, tratamiento de datos, uso de IA en la selección, términos de la postulación): márcalas, Deiber lo autorizó. Las opcionales de publicidad o newsletters: déjalas sin marcar.
+- Casillas de consentimiento obligatorias para postular (política de privacidad, tratamiento de datos, uso de IA en la selección, términos de la postulación): márcalas, ${nombre} lo autorizó. Las opcionales de publicidad o newsletters: déjalas sin marcar.
 - Antes de pulsar enviar, revisa que todas las respuestas sean verdaderas y estén completas. Solo se envía una vez.
 - Si la oferta ya está cerrada o ya no existe: "descartada" con el motivo. Si ya fue postulada antes: "postulada" con esa aclaración. Si la página no abre: "bloqueada".
 

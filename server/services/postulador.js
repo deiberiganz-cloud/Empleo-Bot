@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { CLAUDE } from './claude.js'
-import { armarPrompt, buscarCv, CARPETA_CV, leerPerfil } from './postulador-prompt.js'
+import { armarPrompt } from './postulador-prompt.js'
 
 export const LIMITE_DIARIO = 10
 // Una postulación con formulario largo puede tardar; pasado esto se mata el proceso y la oferta queda bloqueada.
@@ -11,6 +11,7 @@ export const MINUTOS_MAXIMOS_POR_OFERTA = 15
 // Cada cuánto se fija si hay ofertas esperando (por ejemplo, al empezar un día nuevo con el límite agotado).
 export const MINUTOS_ENTRE_CONTROLES = 30
 const LARGO_MAXIMO_NOTA = 600
+const SIN_CV = 'No hay un CV predeterminado: súbelo en la pestaña Perfil'
 
 // La salida cruda de cada intento queda acá (data/ está fuera de git), por si hay que ver qué pasó.
 const CARPETA_SALIDAS = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'data', 'postulador')
@@ -68,17 +69,17 @@ export const interpretarSalida = crudo => {
  * Si pasa del tiempo máximo, mata el proceso con todo su árbol y rechaza con `error.timeout = true`.
  *
  * @param {string} prompt
- * @param {{ timeoutMs?: number }} opciones
+ * @param {{ timeoutMs?: number, carpetaCv?: string }} opciones
  * @returns {Promise<string>}
  */
-export const ejecutarClaudeConChrome = (prompt, { timeoutMs = MINUTOS_MAXIMOS_POR_OFERTA * 60 * 1000 } = {}) =>
+export const ejecutarClaudeConChrome = (prompt, { timeoutMs = MINUTOS_MAXIMOS_POR_OFERTA * 60 * 1000, carpetaCv } = {}) =>
     new Promise((resolve, reject) => {
         const proceso = spawn(
             CLAUDE,
             ['-p', '--chrome', '--model', 'sonnet', '--no-session-persistence', '--setting-sources', '',
                 '--allowedTools', 'mcp__claude-in-chrome__*', '--output-format', 'json',
                 // Sin esto, file_upload no puede leer el CV (está fuera de la carpeta de trabajo).
-                '--add-dir', CARPETA_CV],
+                ...(carpetaCv ? ['--add-dir', carpetaCv] : [])],
             { windowsHide: true },
         )
         let salida = ''
@@ -114,14 +115,14 @@ export const ejecutarClaudeConChrome = (prompt, { timeoutMs = MINUTOS_MAXIMOS_PO
  * @param {object} dependencias
  * @param manager el OfertasManager
  * @param ejecutar (prompt, { timeoutMs }) => Promise<string> (los tests pasan uno de mentira, sin Claude ni Chrome)
- * @param leerContexto () => { perfil, rutaCv } (los tests no leen perfil.md ni buscan el CV)
+ * @param leerContexto () => { perfil, rutaCv, nombre }: el perfil como texto y el CV predeterminado (pestaña Perfil)
  * @param ahora () => Date, para los tests
  * @returns {{ despertar: () => Promise<void>, estado: () => object, reintentar: (id: number) => object | null, arrancar: () => NodeJS.Timeout }}
  */
 export const crearPostulador = ({
     manager,
     ejecutar = ejecutarClaudeConChrome,
-    leerContexto = () => ({ perfil: leerPerfil(), rutaCv: buscarCv() }),
+    leerContexto,
     limiteDiario = LIMITE_DIARIO,
     minutosMaximos = MINUTOS_MAXIMOS_POR_OFERTA,
     carpetaSalidas = CARPETA_SALIDAS,
@@ -161,15 +162,15 @@ export const crearPostulador = ({
         const inicio = Date.now()
         let datos
         try {
-            const { perfil, rutaCv } = leerContexto()
+            const { perfil, rutaCv, nombre } = leerContexto()
             if (!rutaCv) {
-                // Sin CV no se lanza Claude (no hay intento): queda bloqueada hasta que aparezca el archivo.
-                manager.bloquear(oferta.id, 'No se encontró el CV (CV_*.pdf)')
-                manager.agregarNota(oferta.id, `🤖 ${ddmm(ahora())}: Bloqueada. No se encontró el CV (CV_*.pdf).`)
+                // Sin CV no se lanza Claude (no hay intento): queda bloqueada hasta que se suba uno.
+                manager.bloquear(oferta.id, SIN_CV)
+                manager.agregarNota(oferta.id, `🤖 ${ddmm(ahora())}: Bloqueada. ${SIN_CV}.`)
                 return
             }
-            const prompt = armarPrompt({ oferta, perfil, rutaCv })
-            const crudo = await ejecutar(prompt, { timeoutMs: minutosMaximos * 60 * 1000 })
+            const prompt = armarPrompt({ oferta, perfil, rutaCv, nombre })
+            const crudo = await ejecutar(prompt, { timeoutMs: minutosMaximos * 60 * 1000, carpetaCv: path.dirname(rutaCv) })
             guardarSalida(oferta, ahora(), crudo)
             datos = interpretarSalida(crudo)
         } catch (error) {

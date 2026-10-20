@@ -85,10 +85,13 @@ async function evaluar({ erroresFuentes = [] } = {}) {
   // La base y su manager son los mismos que usa la API (server/), así hay una sola forma de guardar.
   const { conectarDB } = await import('./server/config/db.js');
   const { OfertasManager } = await import('./server/dao/OfertasManager.js');
+  const { PerfilManager } = await import('./server/dao/PerfilManager.js');
   const { preguntarAClaude } = await import('./server/services/claude.js');
-  const manager = new OfertasManager(conectarDB());
+  const db = conectarDB();
+  const manager = new OfertasManager(db);
 
-  const perfil = fs.readFileSync(path.join(DIR, 'perfil.md'), 'utf8');
+  // El perfil sale de la pestaña Perfil (la misma base). Si está vacío, lanza y no se gasta Claude.
+  const perfil = new PerfilManager(db).textoParaClaude();
   const entrada = leerJson(ENTRADA, []);
   const vistas = manager.urlsGuardadas();
   const nuevas = entrada.filter(o => o.url && !vistas.has(o.url));

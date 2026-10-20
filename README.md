@@ -54,7 +54,8 @@ Lo construí para mi propia búsqueda de trabajo. Corre en mi PC y usa Claude a 
 - **El correo decide solo cuando es seguro.** La confirmación de LinkedIn mueve la tarjeta sin IA. Las respuestas de las empresas las clasifica Claude, pero solo se avanza (o se cierra con un rechazo): nunca retrocede, cada correo se procesa una sola vez y, si Claude falla, se reintenta en la próxima revisión, hasta 3 veces (después se deja, para no gastar en un correo que siempre falla). Solo se bajan completos los correos que nombran a una empresa en proceso.
 - **Borrar sin olvidar.** Una tabla mínima (`ofertas_borradas`) guarda la url y el estado final de lo borrado: la base no crece sin límite y el bot no vuelve a mostrar lo que ya vi.
 - **Cada fuente por su lado.** Los portales se consultan a la vez y uno caído (o que no responde en 30 segundos) no frena a los demás: queda como aviso en la pantalla.
-- **Privacidad.** Mis datos (`data/`, `perfil.md`, `.env`) nunca entran al repo. El perfil de ejemplo está en `perfil.example.md`.
+- **Perfil dentro de la app.** Datos personales, foto, varios CV (uno predeterminado), experiencia, idiomas, qué busco y respuestas frecuentes se cargan en la pestaña **Perfil**. De ahí sale el texto que lee Claude para evaluar, escribir cartas y postular: lo que cambias se nota en la próxima carta, sin reiniciar.
+- **Privacidad.** Mis datos (`data/`, con la base, la foto y los CV, y `.env`) nunca entran al repo.
 
 ## Cómo empezó: de n8n a código
 
@@ -73,15 +74,14 @@ El flujo queda como registro de esa primera versión y **ya no se mantiene**.
 Requisitos: Node.js 24+ y [Claude Code](https://claude.com/claude-code) con sesión iniciada.
 
 ```bash
-# 1. Perfil: copiar el ejemplo y completarlo con los datos propios
-cp perfil.example.md perfil.md
-
-# 2. API (sirve también la app compilada) en http://localhost:3001
+# 1. API (sirve también la app compilada) en http://localhost:3001
 cd server && npm install && npm run dev
 
-# 3. App web (solo la primera vez o después de cambios)
+# 2. App web (solo la primera vez o después de cambios)
 cd web && npm install && npm run build
 ```
+
+Después, abrir http://localhost:3001 y completar la pestaña **Perfil** (datos, CV en PDF y lo que buscas): sin perfil, Claude no evalúa ni postula.
 
 **Buscar a mano:** `npm run buscar` en la raíz (baja los portales, evalúa con Claude e imprime el resumen). Con la API abierta no hace falta: busca sola cada 4 horas.
 
@@ -91,8 +91,8 @@ cd web && npm install && npm run build
 
 ```bash
 npm test                # búsqueda, alertas y seguimiento por Gmail (correos inventados y un Claude de mentira)
-cd server && npm test   # API, manager, migraciones y escritores de texto
-cd web && npm test      # filtros, tablero, tarjetas y panel de detalle
+cd server && npm test   # API, managers, perfil, migraciones y escritores de texto
+cd web && npm test      # filtros, tablero, tarjetas, panel de detalle y pestaña Perfil
 ```
 
 ## Autor

@@ -1,5 +1,6 @@
-import { conectarDB } from './config/db.js'
+import { CARPETA_PERFIL_POR_DEFECTO, conectarDB } from './config/db.js'
 import { OfertasManager } from './dao/OfertasManager.js'
+import { PerfilManager } from './dao/PerfilManager.js'
 import { crearApp } from './crearApp.js'
 import { crearEscritorDeCartas, crearEscritorDeMensajeCorto, crearEscritorDeSeguimiento } from './services/cartas.js'
 import { crearRevisorDeGmail, revisarCadaRato, MINUTOS_ENTRE_REVISIONES } from './services/gmail.js'
@@ -13,13 +14,24 @@ const db = conectarDB()
 const manager = new OfertasManager(db)
 const revisarGmail = crearRevisorDeGmail()
 const buscador = crearBuscador()
-const postulador = crearPostulador({ manager })
+const perfilManager = new PerfilManager(db, CARPETA_PERFIL_POR_DEFECTO)
+// Claude (cartas, mensajes y postulador) lee el perfil y el CV de la pestaña Perfil en el momento:
+// lo que se cambia ahí se nota en la próxima carta o postulación, sin reiniciar.
+const leerPerfil = () => perfilManager.textoParaClaude()
+const postulador = crearPostulador({
+    manager,
+    leerContexto: () => ({
+        perfil: leerPerfil(),
+        rutaCv: perfilManager.rutaCvPredeterminado(),
+        nombre: perfilManager.obtener().datos.personales.nombre || undefined,
+    }),
+})
 const app = crearApp(manager, {
-    escribirCarta: crearEscritorDeCartas(),
-    escribirSeguimiento: crearEscritorDeSeguimiento(),
-    escribirMensajeCorto: crearEscritorDeMensajeCorto(),
+    escribirCarta: crearEscritorDeCartas({ leerPerfil }),
+    escribirSeguimiento: crearEscritorDeSeguimiento({ leerPerfil }),
+    escribirMensajeCorto: crearEscritorDeMensajeCorto({ leerPerfil }),
     revisarGmail,
-}, buscador, postulador)
+}, buscador, postulador, perfilManager)
 
 app.listen(PUERTO, () => {
     console.log(`API de empleo-bot en http://localhost:${PUERTO}`)

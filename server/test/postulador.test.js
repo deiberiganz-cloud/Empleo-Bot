@@ -148,7 +148,7 @@ describe('crearPostulador', () => {
         const id = aceptar(manager)
         await crear(async () => respuesta('postulada'), { leerContexto: () => ({ perfil: 'p', rutaCv: null }) }).despertar()
         assert.equal(llamadas.length, 0)
-        assert.match(manager.obtenerPorId(id).bloqueada_motivo, /No se encontró el CV/)
+        assert.match(manager.obtenerPorId(id).bloqueada_motivo, /No hay un CV predeterminado/)
         assert.equal(manager.intentosDelDia(AHORA), 0)
     })
 

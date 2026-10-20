@@ -738,3 +738,297 @@ button {
   font-size: 13px;
   color: var(--text-secondary);
 }
+
+/* ---- Perfil: tarjetas numeradas como la maqueta ---- */
+
+.perfil {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-bottom: 32px;
+}
+
+.perfil__tarjeta {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radio-tarjeta);
+  box-shadow: var(--sombra-tarjeta);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.perfil__resumen {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+}
+
+.perfil__resumen-texto {
+  flex: 1 1 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.perfil__nombre {
+  margin: 0;
+  font-size: 24px;
+}
+
+.perfil__titulo {
+  margin: 0;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.perfil__numero {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  color: var(--surface);
+  font-size: 14px;
+  flex: none;
+}
+
+.perfil__ayuda,
+.perfil__vacio {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.perfil__barra {
+  height: 8px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.perfil__barra-relleno {
+  height: 100%;
+  background: var(--accent);
+}
+
+.perfil__foto {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  flex: none;
+}
+
+.perfil__foto--grande {
+  width: 96px;
+  height: 96px;
+}
+
+.perfil__foto--vacia {
+  background: var(--page);
+  border-style: dashed;
+  border-color: var(--text-muted);
+}
+
+.perfil__grilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.perfil__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.perfil__campo input,
+.perfil__campo select,
+.perfil__campo textarea,
+.perfil__entrada {
+  font: inherit;
+  font-size: 15px;
+  color: var(--text-primary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radio-boton);
+  padding: 10px 12px;
+  min-height: 44px;
+  width: 100%;
+}
+
+.perfil__campo textarea {
+  min-height: 90px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.perfil__entrada {
+  flex: 1 1 200px;
+  width: auto;
+}
+
+.perfil__entrada--titulo {
+  font-weight: 600;
+  padding: 6px 8px;
+  min-height: 36px;
+}
+
+.perfil__fila {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.perfil__fila--foto {
+  gap: 16px;
+}
+
+.perfil__columna {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.perfil__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.perfil__item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-primary);
+  font-size: 15px;
+}
+
+.perfil__item--columna {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.perfil__item--link {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  align-items: end;
+}
+
+.perfil__item-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.perfil__item-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 220px;
+}
+
+.perfil__item-titulo {
+  font-weight: 600;
+}
+
+.perfil__item-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.perfil__predeterminado {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--status-good-text);
+  border: 1px solid var(--status-good);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.perfil__chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.perfil__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 6px 4px 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--page);
+}
+
+.perfil__chip-quitar {
+  border: none;
+  background: none;
+  font-size: 18px;
+  line-height: 1;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+
+.perfil__subir {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  cursor: pointer;
+}
+
+.perfil__subir:focus-within {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+
+/* El input de archivo queda invisible pero usable con teclado (lo dibuja la etiqueta). */
+.perfil__archivo {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.perfil__pie {
+  display: flex;
+  justify-content: flex-end;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
