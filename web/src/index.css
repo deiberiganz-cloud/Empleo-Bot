@@ -1,10 +1,20 @@
-/* ---- Tokens de diseño: el único lugar con colores (paleta de Zerelle) ----
+/* ---- Tokens de diseño: el único lugar con colores (paleta de Zerelle, igual que Serelle) ----
+   El tema lo decide el atributo data-theme de <html>, que fija el script inline de
+   index.html (tu elección guardada o, si no hay, la del sistema) y cambia useTema.
+   Claro = paleta de Zerelle. Oscuro = la misma versión oscura de Serelle (PJ-52).
    Todos los textos cumplen contraste AA (4,5:1) sobre --page y --surface.
    El dorado (--accent) va solo en barras y detalles: como texto no llega al contraste. */
 
 :root {
-  color-scheme: light;
   font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+
+  --radio-tarjeta: 15px;
+  --radio-boton: 8px;
+}
+
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
 
   --page: #fafafa;
   --surface: #ffffff;
@@ -21,9 +31,32 @@
   --status-warning-text: #92660c;
   --status-critical-text: #d03b3b;
 
-  --radio-tarjeta: 15px;
-  --radio-boton: 8px;
   --sombra-tarjeta: 0 2px 10px rgba(0, 0, 0, 0.05);
+  --sombra-panel: -4px 0 20px rgba(0, 0, 0, 0.1);
+  --fondo-modal: rgba(0, 0, 0, 0.5);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --page: #0f0f0f;
+  --surface: #1a1a1a;
+  --text-primary: #fafafa;
+  --text-secondary: #b3b3b3;
+  --text-muted: #8c8c8c;
+  --border: #2e2e2e;
+  --accent: #d4af37;
+
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-critical: #d03b3b;
+  --status-good-text: #0ca30c;
+  --status-warning-text: #f0b429;
+  --status-critical-text: #e66767;
+
+  --sombra-tarjeta: 0 2px 10px rgba(0, 0, 0, 0.4);
+  --sombra-panel: -4px 0 20px rgba(0, 0, 0, 0.6);
+  --fondo-modal: rgba(0, 0, 0, 0.7);
 }
 
 * {
@@ -57,10 +90,42 @@ button {
 }
 
 .encabezado {
+  position: relative;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   padding: 20px 16px 16px;
   text-align: center;
+}
+
+/* Botón claro/oscuro (igual que en Serelle): arriba a la derecha del encabezado. */
+.boton-tema {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--text-secondary);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radio-boton);
+  cursor: pointer;
+}
+
+.boton-tema:hover {
+  color: var(--text-primary);
+  background: var(--page);
+}
+
+/* En el celular la marca se achica para no chocar con el botón de tema. */
+@media (max-width: 420px) {
+  .encabezado__marca {
+    font-size: 24px;
+    letter-spacing: 3px;
+  }
 }
 
 .encabezado__marca {
@@ -394,7 +459,7 @@ button {
 .detalle-fondo {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--fondo-modal);
   display: flex;
   justify-content: flex-end;
   z-index: 10;
@@ -406,7 +471,7 @@ button {
   overflow-y: auto;
   background: var(--surface);
   padding: 20px;
-  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--sombra-panel);
 }
 
 .detalle__encabezado {

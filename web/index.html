@@ -5,6 +5,19 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Empleo Bot</title>
+    <!-- El tema se elige antes de que cargue la app, así no parpadea en blanco (ver hooks/useTema.ts). -->
+    <script>
+      (function () {
+        var tema = null;
+        try {
+          tema = localStorage.getItem("empleo-bot-tema");
+        } catch (e) {}
+        if (tema !== "light" && tema !== "dark") {
+          tema = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.setAttribute("data-theme", tema);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

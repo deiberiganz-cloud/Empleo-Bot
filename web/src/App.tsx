@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BotonTema } from "./components/BotonTema";
 import { ArchivoPage } from "./pages/ArchivoPage";
 import { BandejaPage } from "./pages/BandejaPage";
 import { PerfilPage } from "./pages/PerfilPage";
@@ -29,6 +30,7 @@ export function App() {
     <div className="pagina">
       <header className="encabezado">
         <h1 className="encabezado__marca">EMPLEO BOT</h1>
+        <BotonTema />
         <nav className="encabezado__nav" aria-label="Secciones">
           {VISTAS.map((opcion) => (
             <button
