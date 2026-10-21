@@ -9,15 +9,24 @@ const FUENTE = 'LinkedIn (alerta)';
 // Líneas de la tarjeta que no son título, empresa ni lugar.
 const RUIDO = /^(solicitar con perfil|esta empresa busca|\d+ personas? (estudi|trabaj)|ver anuncio|promocionado|nuevo$|sé uno de los|se ha enviado tu solicitud|your application was sent)/i;
 
+// Renglones de encabezado o sección que algunos correos ponen antes de un bloque de avisos.
+const ENCABEZADO = /^(nuevos empleos|empleos de\b|el empleo guardado|tus otros empleos|amplía tu búsqueda|recomendaciones basadas|\d+ nuevos empleos|tu alerta de empleo)/i;
+
+// Saca las etiquetas HTML que se cuelan en el texto plano y ordena los espacios.
+const limpiar = linea => linea.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+
 // Recorre el texto plano del correo: cada oferta termina en la línea "Ver anuncio de empleo: <link>".
 function extraerOfertas(texto, fecha) {
   const ofertas = [];
   let tarjeta = [];
   for (const cruda of String(texto).split(/\r?\n/)) {
-    const linea = cruda.trim();
+    const linea = limpiar(cruda);
+    // Un renglón envuelto en <strong> es la palabra clave de la alerta (encabezado), no parte de un aviso.
+    const esEncabezado = /^<strong/i.test(cruda.trim()) || ENCABEZADO.test(linea);
     const id = linea.match(/linkedin\.com\/comm\/jobs\/view\/(\d+)/)?.[1];
     if (id) {
-      const [titulo, empresa, ubicacion] = tarjeta;
+      // La tarjeta real son los 3 últimos renglones antes del link; lo anterior sería ruido.
+      const [titulo, empresa, ubicacion] = tarjeta.slice(-3);
       if (titulo && empresa) {
         ofertas.push({
           fuente: FUENTE,
@@ -33,7 +42,7 @@ function extraerOfertas(texto, fecha) {
       tarjeta = [];
     } else if (/^-{5,}$/.test(linea) || /https?:\/\//.test(linea)) {
       tarjeta = [];
-    } else if (linea && !RUIDO.test(linea)) {
+    } else if (linea && !esEncabezado && !RUIDO.test(linea)) {
       tarjeta.push(linea);
     }
   }
