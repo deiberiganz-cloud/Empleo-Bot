@@ -5,3 +5,10 @@ reporte.html
 .env
 
 node_modules/
+
+# Robot 3D: en git van los scripts y las caras; los modelos, renders de control y referencias pesan
+# cientos de MB y se regeneran con los scripts (ver blender/LEEME.md)
+blender/*
+!blender/*.py
+!blender/LEEME.md
+!blender/caras/

@@ -1,26 +1,30 @@
 import type { Oferta } from "./types";
 
-/** Las poses del robot (archivos en web/public/robot/, recortados con docs/recortar-robot.py). */
+/**
+ * Las poses del robot: cuadros del modelo 3D renderizados en Blender (archivos en web/public/robot/,
+ * generados con blender/animar-robot.py y blender/sprites-a-webp.py).
+ */
 export const POSES = [
   "parado",
-  "paso-a",
-  "paso-b",
-  "caja-paso-0",
-  "caja-paso-1",
-  "caja-paso-2",
-  "tablet",
-  "tablet-concentrado",
   "parado-caja",
+  ...cuadros("caminar", 8),
+  ...cuadros("caja", 8),
+  ...cuadros("trabajar", 4),
   "salto",
   "preocupado",
 ] as const;
 
-export type Pose = (typeof POSES)[number];
+type Cuadro<N extends string> = `${N}-${number}`;
+export type Pose = "parado" | "parado-caja" | "salto" | "preocupado" | Cuadro<"caminar" | "caja" | "trabajar">;
+
+function cuadros<N extends string>(nombre: N, cantidad: number): Cuadro<N>[] {
+  return Array.from({ length: cantidad }, (_, i) => `${nombre}-${i}` as Cuadro<N>);
+}
 
 /** Las secuencias que se repiten: caminar con las manos vacías, con la caja y trabajar con la tablet. */
-export const CAMINAR: Pose[] = ["paso-a", "parado", "paso-b", "parado"];
-export const CAMINAR_CAJA: Pose[] = ["caja-paso-0", "caja-paso-2", "caja-paso-1", "caja-paso-2"];
-export const TRABAJAR: Pose[] = ["tablet", "tablet-concentrado"];
+export const CAMINAR: Pose[] = cuadros("caminar", 8);
+export const CAMINAR_CAJA: Pose[] = cuadros("caja", 8);
+export const TRABAJAR: Pose[] = cuadros("trabajar", 4);
 
 /** Cómo termina la escena: entrega la caja y salta, se preocupa con el "!", o vuelve con la caja. */
 export type FinalRobot = "postulada" | "bloqueada" | "devuelta";

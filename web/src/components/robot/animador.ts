@@ -1,9 +1,9 @@
 import { CAMINAR, CAMINAR_CAJA, type FinalRobot, type Pose, TRABAJAR } from "../../domain/robot";
 
-// Valores que quedaron bien en la maqueta.
-const VELOCIDAD = 90; // px por segundo
-const CUADROS_POR_SEGUNDO = 8;
-const MS_POR_POSE_TRABAJANDO = 700;
+// Con 8 cuadros por paso doble, 12 cuadros por segundo y 75 px/s los pies casi no patinan.
+const VELOCIDAD = 75; // px por segundo
+const CUADROS_POR_SEGUNDO = 12;
+const MS_POR_POSE_TRABAJANDO = 220;
 const MS_BLOQUEADO = 6000; // cuánto espera con el "!" antes de volver (si no lo tocas antes)
 const CASA = 60; // la esquina izquierda donde descansa
 const ANTES_DEL_BORDE = 87; // dónde entrega la caja, contado desde la derecha
