@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url'
 import { CLAUDE } from './claude.js'
 import { armarPrompt } from './postulador-prompt.js'
 
-export const LIMITE_DIARIO = 10
+// 20 por día (subido de 10 el 20/10): suficientes para tener chances sin parecer un envío masivo.
+export const LIMITE_DIARIO = 20
 // Una postulación con formulario largo puede tardar; pasado esto se mata el proceso y la oferta queda bloqueada.
 export const MINUTOS_MAXIMOS_POR_OFERTA = 15
 // Cada cuánto se fija si hay ofertas esperando (por ejemplo, al empezar un día nuevo con el límite agotado).

@@ -19,8 +19,11 @@ import {
   CURSOR_VELOCIDAD_MAXIMA,
   dentroDelNucleo,
   estaFueraDeLugar,
+  FRICCION_INCLINADA,
+  GRAVEDAD_INCLINADA_X,
   limitarVelocidad,
   pasoDelCursor,
+  ROCE_AIRE_INCLINADA,
   techoColumna,
   VELOCIDAD_GOLPE,
 } from "../../domain/robot";
@@ -108,6 +111,8 @@ export class CajasFisicas {
   private vivo = true;
   private porCaer = 0;
   private arrastrandoConDedo = false;
+  /** Durante el berrinche: la gravedad va hacia la izquierda y casi no hay roce. */
+  private inclinada = false;
   private punteroDentro = false;
   private cursorActivo = false;
   private objetivoCursor = { x: 0, y: 0 };
@@ -210,9 +215,17 @@ export class CajasFisicas {
       const encima = Query.point(this.cajas.map((c) => c.cuerpo), this.mouse.position).length > 0;
       encabezado.style.cursor = this.agarre.body ? "grabbing" : encima ? "grab" : "";
     };
+    // al agarrar una caja no se selecciona el texto del encabezado; fuera de las cajas, la selección sigue normal
+    const alPresionar = (e: MouseEvent) => {
+      const r = encabezado.getBoundingClientRect();
+      const punto = { x: e.clientX - r.left, y: e.clientY - r.top };
+      if (Query.point(this.cajas.map((c) => c.cuerpo), punto).length > 0) e.preventDefault();
+    };
     encabezado.addEventListener("mousemove", alMover);
+    encabezado.addEventListener("mousedown", alPresionar);
     this.limpiezas.push(() => {
       encabezado.removeEventListener("mousemove", alMover);
+      encabezado.removeEventListener("mousedown", alPresionar);
       encabezado.style.cursor = "";
     });
   }
@@ -244,6 +257,7 @@ export class CajasFisicas {
    * Así el borde queda libre para hacer clic y agarrar. El empuje es una fuerza hacia la velocidad del mouse, con tope.
    */
   private moverCursor(ms: number) {
+    if (ms <= 0) return; // un cuadro de 0 ms dividiría la fuerza por cero y rompería la caja
     const debe = this.punteroDentro && !this.agarre.body;
     if (debe && !this.cursorActivo) this.posCursor = { ...this.objetivoCursor };
     this.cursorActivo = debe;
@@ -305,11 +319,11 @@ export class CajasFisicas {
   private nueva(x: number, y: number, { base = false, giro = (Math.random() - 0.5) * 0.8, vx = 0, vy = 0 } = {}) {
     const cuerpo = Bodies.rectangle(x, y, CAJA_ANCHO, CAJA_ALTO, {
       chamfer: { radius: 3 },
-      friction: 0.8,
-      frictionStatic: 1.2,
+      friction: this.inclinada ? FRICCION_INCLINADA : 0.8,
+      frictionStatic: this.inclinada ? FRICCION_INCLINADA : 1.2,
       restitution: 0.1,
       density: CAJA_DENSIDAD,
-      frictionAir: CAJA_ROCE_AIRE,
+      frictionAir: this.inclinada ? ROCE_AIRE_INCLINADA : CAJA_ROCE_AIRE,
       sleepThreshold: 30,
     });
     Body.setAngle(cuerpo, giro);
@@ -392,6 +406,74 @@ export class CajasFisicas {
     ).then(() => {
       if (this.vivo) this.nueva(col, techo - CAJA_ALTO / 2 - 0.5, { base, giro: 0 });
     });
+  }
+
+  // ---- Berrinche ----
+  /** El temblor las despierta y las hace saltar. */
+  saltarTodas() {
+    for (const { cuerpo } of this.cajas) {
+      Sleeping.set(cuerpo, false);
+      Body.setVelocity(cuerpo, { x: -(0.5 + Math.random()), y: -(3 + Math.random() * 4) });
+    }
+  }
+
+  /** Gravedad torcida hacia la izquierda y casi sin roce: todas las cajas terminan amontonadas en la esquina. */
+  torcerGravedad() {
+    this.inclinada = true;
+    this.motor.gravity.x = GRAVEDAD_INCLINADA_X;
+    for (const { cuerpo } of this.cajas) {
+      cuerpo.friction = cuerpo.frictionStatic = FRICCION_INCLINADA;
+      cuerpo.frictionAir = ROCE_AIRE_INCLINADA;
+      Sleeping.set(cuerpo, false);
+    }
+    // el piso también resbala (el roce estático de dos cuerpos es el mayor de los dos)
+    for (const p of this.paredes) p.friction = p.frictionStatic = FRICCION_INCLINADA;
+    // empujoncitos por si alguna quedó trabada
+    for (const ms of [300, 900, 1600]) {
+      this.despues(ms, () => {
+        if (!this.inclinada) return;
+        for (const { cuerpo } of this.cajas) {
+          Sleeping.set(cuerpo, false);
+          Body.applyForce(cuerpo, cuerpo.position, { x: -cuerpo.mass * 0.0004, y: 0 });
+        }
+      });
+    }
+  }
+
+  /** La gravedad y el roce vuelven a la normalidad (los valores por defecto de Matter en las paredes). */
+  enderezar() {
+    this.inclinada = false;
+    this.motor.gravity.x = 0;
+    for (const { cuerpo } of this.cajas) {
+      cuerpo.friction = 0.8;
+      cuerpo.frictionStatic = 1.2;
+      cuerpo.frictionAir = CAJA_ROCE_AIRE;
+      Sleeping.set(cuerpo, false);
+    }
+    for (const p of this.paredes) {
+      p.friction = 0.1;
+      p.frictionStatic = 0.5;
+    }
+  }
+
+  /** Mientras dura el berrinche las cajas pasan sin chocar con el robot (se deslizan por detrás). */
+  robotSinChoque(sin: boolean) {
+    this.cuerpoRobot.collisionFilter.mask = sin ? 0 : 0xffffffff;
+  }
+
+  /** Las cajas que quedaron dentro del robot se suben sobre su cabeza (así no se incrustan al volver a chocar). */
+  sacarDelRobot(xRobot: number) {
+    for (const { cuerpo } of this.cajas) {
+      const p = cuerpo.position;
+      if (Math.abs(p.x - xRobot) >= 30 * this.escala() || p.y <= this.alto() - 75 * this.escala()) continue;
+      Body.setPosition(cuerpo, { x: p.x, y: this.alto() - 80 * this.escala() - CAJA_ALTO });
+      Body.setVelocity(cuerpo, { x: 0, y: 0 });
+    }
+  }
+
+  /** Olvida las cajas en las que el robot se había rendido: después del desastre vuelven a contar todas. */
+  olvidarRendidas() {
+    for (const { cuerpo } of this.cajas) this.rendidas.delete(cuerpo);
   }
 
   // ---- Orden ----

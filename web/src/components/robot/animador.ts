@@ -3,13 +3,22 @@ import {
   ANTES_DEL_BORDE,
   CASA,
   cajasExtra,
+  desfaseDePose,
+  enojar,
   ESPERA_FLAUTA,
   ESPERA_ORDENAR,
   ESPERA_ORDENAR_CON_FLAUTA,
   type FinalRobot,
+  INCLINACION_GRADOS,
   MS_BLOQUEADO,
+  MS_INCLINADA,
+  MS_TEMBLOR,
+  type Paciencia,
+  pacienciaIntacta,
   type Pose,
   PX_POR_CICLO,
+  recuperarPaciencia,
+  seAcaboLaPaciencia,
   SERIES,
   VELOCIDAD,
 } from "../../domain/robot";
@@ -85,6 +94,17 @@ export class AnimadorRobot {
   private manoDeOferta = false;
   private sinInterrupcion = false;
   private molestoPendiente = false;
+  /** Cuántos píxeles de la imagen (de 360 de alto) se corre el robot para que los pies no salten en el berrinche. */
+  private desfase = 0;
+
+  // ---- El berrinche ----
+  private paciencia: Paciencia = pacienciaIntacta(Date.now());
+  private enBerrinche = false;
+  /** El berrinche cortó el orden en curso. */
+  private cortarOrden = false;
+  /** Tras un berrinche, cuando termina de ordenar se sacude las manos. */
+  private trasBerrinche = false;
+  private temblor: Animation | null = null;
 
   private cadena: Promise<void> = Promise.resolve();
   private escenasPendientes = 0;
@@ -101,6 +121,7 @@ export class AnimadorRobot {
   private cuadroPendiente = 0;
   private relojOrden: ReturnType<typeof setInterval>;
   private relojFlauta: ReturnType<typeof setInterval>;
+  private relojPaciencia: ReturnType<typeof setInterval>;
   private relojNotas: ReturnType<typeof setInterval> | null = null;
   private readonly temporizadores = new Set<ReturnType<typeof setTimeout>>();
   private readonly el: Elementos;
@@ -125,12 +146,17 @@ export class AnimadorRobot {
     this.cuadroPendiente = requestAnimationFrame(this.tic);
     this.relojOrden = setInterval(() => this.revisarOrden(), 500);
     this.relojFlauta = setInterval(() => this.revisarFlauta(), 400);
+    // sin enojos por un rato, la paciencia vuelve de a poco
+    this.relojPaciencia = setInterval(() => {
+      this.paciencia = recuperarPaciencia(this.paciencia, Date.now());
+    }, 1000);
   }
 
   // ---- Lo que le dice el postulador ----
   /** Empezó a postular una oferta: recoge la caja de la pila, camina a la mitad y se pone a pensar. */
   inicio() {
     this.enCurso = true;
+    this.trasBerrinche = false; // con trabajo por delante ya no se sacude las manos
     this.escenasPendientes++;
     this.encolar(async () => {
       await this.guardarFlauta();
@@ -197,6 +223,7 @@ export class AnimadorRobot {
     cancelAnimationFrame(this.cuadroPendiente);
     clearInterval(this.relojOrden);
     clearInterval(this.relojFlauta);
+    clearInterval(this.relojPaciencia);
     this.pararNotas();
     for (const t of this.temporizadores) clearTimeout(t);
     this.temporizadores.clear();
@@ -204,7 +231,8 @@ export class AnimadorRobot {
     this.cajas.destruir();
     this.sonido.destruir();
     this.el.carril.querySelectorAll(".nota-musical, .caja-voladora").forEach((n) => n.remove());
-    this.el.robot.classList.remove("robot--trabajando", "robot--saltando", "robot--golpeado");
+    this.el.robot.classList.remove("robot--trabajando", "robot--saltando", "robot--golpeado", "robot--berrinche");
+    this.enderezarRaiz(); // si se desmonta a mitad del berrinche, la página no puede quedar inclinada
   }
 
   // ---- Las escenas del final ----
@@ -386,6 +414,7 @@ export class AnimadorRobot {
     if (this.poseActual) this.el.imagenes[this.poseActual]?.classList.remove("robot__pose--activa");
     nueva.classList.add("robot__pose--activa");
     this.poseActual = pose;
+    this.desfase = desfaseDePose(pose);
   }
 
   private mirar(izquierda: boolean) {
@@ -393,7 +422,8 @@ export class AnimadorRobot {
   }
 
   private ubicar() {
-    this.el.robot.style.transform = `translateX(${this.x - this.el.robot.offsetWidth / 2}px)`;
+    const corrido = (this.desfase * this.el.robot.offsetHeight) / 360;
+    this.el.robot.style.transform = `translateX(${this.x - this.el.robot.offsetWidth / 2 - corrido}px)`;
   }
 
   private esperar(ms: number) {
@@ -430,11 +460,11 @@ export class AnimadorRobot {
   }
 
   /**
-   * Libre = sin postular, sin escenas por hacer y sin estar en medio de un golpe.
+   * Libre = sin postular, sin escenas por hacer y sin estar en medio de un golpe o un berrinche.
    * Las ofertas en fila no cuentan: pueden esperar horas (por ejemplo, con el tope del día) y el robot descansa igual.
    */
   private libre() {
-    return !this.enCurso && this.escenasPendientes === 0 && !this.golpe;
+    return !this.enCurso && this.escenasPendientes === 0 && !this.golpe && !this.enBerrinche;
   }
 
   // ---- Golpe y enojo ----
@@ -464,18 +494,123 @@ export class AnimadorRobot {
 
   /** Se molesta si le desordenan las cajas mientras ordena (si justo está agachado, espera a terminar). */
   private molestar() {
-    if (this.golpe || this.quieto()) return;
+    if (this.golpe || this.enBerrinche || this.quieto()) return;
     if (this.sinInterrupcion) {
       this.molestoPendiente = true;
       return;
     }
+    this.paciencia = enojar(this.paciencia, Date.now());
+    const revienta = seAcaboLaPaciencia(this.paciencia);
     this.golpe = {
       cuadros: this.llevaCaja ? SERIES.molestoCaja : SERIES.molesto,
       fps: 12,
       t: 0,
       espejoAntes: this.el.cuerpo.classList.contains("robot__cuerpo--espejo"),
+      despues: revienta ? () => this.berrinche() : undefined,
     };
     this.sonido.sonarEnojo();
+  }
+
+  // ---- El berrinche: se agarra del suelo, la página se inclina y las cajas se deslizan a la esquina ----
+  /**
+   * Se le acabó la paciencia: corta el orden en curso, hace el berrinche y después vuelve a ordenar lo que desparramó.
+   * Si justo llegó trabajo del postulador, no hace berrinche (la postulación va primero).
+   */
+  private berrinche() {
+    this.paciencia = pacienciaIntacta(Date.now());
+    if (!this.vivo || this.enCurso || this.escenasPendientes > 0) return;
+    this.enBerrinche = true;
+    this.cortarOrden = true;
+    if (this.caminata) {
+      // si venía caminando, el orden se corta ahí
+      const c = this.caminata;
+      this.caminata = null;
+      c.listo();
+    }
+    this.encolar(async () => {
+      await this.guardarFlauta();
+      this.llevaCaja = false;
+      this.mirar(false); // el cuerpo de los cuadros ya mira a la izquierda
+      this.sinInterrupcion = true;
+      this.cajas.robotSinChoque(true); // las cajas pasan sin chocar con él mientras se deslizan (y por detrás)
+      this.el.robot.classList.add("robot--berrinche");
+      let inclinada: Promise<void> | null = null;
+      await this.reproducir(SERIES.berrinche.slice(0, 24), 12, {
+        alCuadro: (i) => {
+          this.sonido.sonarBerrinche(i);
+          if (i === 20) inclinada = this.inclinarPagina();
+        },
+      });
+      // bucle mientras dura la inclinación
+      void this.reproducir(SERIES.berrinche.slice(24), 12, { repetir: true, alCuadro: (i) => this.sonido.sonarBerrinche(24 + i) });
+      await (inclinada ?? this.inclinarPagina());
+      this.sonido.cerrarBerrinche();
+      await Promise.all([this.reproducir(SERIES.soltarBorde, 12), this.enderezarPagina()]);
+      this.cajas.sacarDelRobot(this.x);
+      this.cajas.robotSinChoque(false);
+      this.el.robot.classList.remove("robot--berrinche");
+      this.sinInterrupcion = false;
+      this.enBerrinche = false;
+      this.trasBerrinche = true;
+      this.cajas.olvidarRendidas();
+      this.descansar();
+      await this.esperar(1200); // las cajas terminan de asentarse
+      this.cajas.ultimoToque = Date.now();
+      this.ordenar();
+    }, () => {
+      this.enBerrinche = false;
+    });
+  }
+
+  /** Sacudida corta, las cajas saltan y después toda la página gira; dura MS_TEMBLOR + MS_INCLINADA. Con "menos movimiento" no se mueve nada. */
+  private async inclinarPagina() {
+    if (!this.quieto()) {
+      this.sonido.sonarRetumbe(true);
+      this.cajas.saltarTodas();
+      if (typeof document.body.animate === "function") {
+        this.temblor = document.body.animate(
+          [{ translate: "0 0" }, { translate: "-4px 2px" }, { translate: "3px -2px" }, { translate: "-3px 1px" }, { translate: "2px -1px" }, { translate: "0 0" }],
+          { duration: MS_TEMBLOR, easing: "linear" },
+        );
+      }
+      await this.esperar(MS_TEMBLOR);
+      if (!this.vivo) return;
+      // la raíz de la página gira (el lado izquierdo baja) y sin barras de desplazamiento mientras dure
+      document.documentElement.classList.add("inclinada");
+      document.body.style.rotate = `-${INCLINACION_GRADOS}deg`;
+      this.cajas.torcerGravedad();
+    }
+    await this.esperar(MS_INCLINADA);
+  }
+
+  /** La página vuelve derecha y la física a la normal. */
+  private enderezarPagina() {
+    this.sonido.sonarRetumbe(false);
+    this.cajas.enderezar();
+    document.body.style.rotate = "";
+    return this.esperar(600).then(() => document.documentElement.classList.remove("inclinada"));
+  }
+
+  /** Deja la página como estaba, de golpe (al desmontar). */
+  private enderezarRaiz() {
+    this.temblor?.cancel();
+    this.temblor = null;
+    document.body.style.rotate = "";
+    document.documentElement.classList.remove("inclinada");
+  }
+
+  /** Solo tras un berrinche, cuando termina de ordenar: se sacude las manos satisfecho. */
+  private async sacudirManos() {
+    this.trasBerrinche = false;
+    this.mirar(false);
+    this.sinInterrupcion = true;
+    await this.reproducir(SERIES.sacudirManos, 12, {
+      alCuadro: (i) => {
+        if (i === 2) this.sonido.sonarSatisfecho();
+      },
+    });
+    this.sinInterrupcion = false;
+    this.descansar();
   }
 
   // ---- Cuántas cajas ----
@@ -490,7 +625,7 @@ export class AnimadorRobot {
 
   // ---- Ordenar las cajas ----
   private revisarOrden() {
-    if (this.ordenando || this.enCurso || this.escenasPendientes > 0 || this.golpe) return;
+    if (this.ordenando || this.enBerrinche || this.enCurso || this.escenasPendientes > 0 || this.golpe) return;
     // si la fila bajó por otro lado (se descartó una oferta), sobra una caja: se retira
     if (this.cajasDeOfertas() > this.cajasQueDeberiaHaber() && this.cajas.quitarSobrante()) return;
     const espera = this.flauta === "tocando" ? ESPERA_ORDENAR_CON_FLAUTA : ESPERA_ORDENAR;
@@ -500,20 +635,35 @@ export class AnimadorRobot {
   private ordenar() {
     this.ordenando = true;
     this.encolar(async () => {
-      if (!this.libre() || this.cajas.desordenadas().length === 0) return;
+      this.cortarOrden = false;
+      if (!this.libre() || this.cajas.desordenadas().length === 0) {
+        if (this.trasBerrinche && this.libre()) await this.sacudirManos(); // ya estaba todo en orden
+        return;
+      }
       await this.guardarFlauta();
       const intentos = new Map<Caja, number>();
       let vueltas = 0;
-      while (!this.enCurso && this.escenasPendientes === 0 && vueltas++ < VUELTAS_MAXIMAS) {
+      while (!this.enCurso && this.escenasPendientes === 0 && !this.cortarOrden && vueltas++ < VUELTAS_MAXIMAS) {
         const caja = this.proximaADesordenar(intentos);
         if (!caja) break;
         intentos.set(caja, (intentos.get(caja) ?? 0) + 1);
         await this.ordenarUna(caja);
       }
+      if (this.cortarOrden) {
+        // berrinche: la caja que tenía en la mano vuelve a la pila y sigue la otra escena
+        if (this.llevaCaja) {
+          const base = !this.manoDeOferta;
+          this.llevaCaja = false;
+          this.manoDeOferta = false;
+          this.cajas.dejarEnColumna(base, this.x);
+        }
+        return;
+      }
       if (this.enCurso || this.escenasPendientes > 0) return; // llegó trabajo: el orden sigue después
       // las que no pudo acomodar (3 intentos, o se acabó el tope de vueltas) se recuerdan con su posición y no se reintentan
       const tope = vueltas > VUELTAS_MAXIMAS;
       for (const c of this.cajas.desordenadas()) if (tope || (intentos.get(c) ?? 0) >= INTENTOS_POR_CAJA) this.cajas.rendirse(c);
+      if (this.trasBerrinche) await this.sacudirManos();
       this.descansar();
     }, () => {
       this.ordenando = false;
@@ -534,6 +684,7 @@ export class AnimadorRobot {
     const lado = caja.cuerpo.position.x < this.x ? 1 : -1;
     const destino = Math.min(this.ancho() - 20, Math.max(CASA, caja.cuerpo.position.x + lado * 32 * this.escala()));
     await this.caminar(destino, SERIES.caminar);
+    if (this.cortarOrden) return;
     // si se la movieron (la agarraron, o se alejó), prueba con la siguiente
     if (!this.cajas.cajas.includes(caja) || this.cajas.estaAgarrada(caja) || Math.abs(caja.cuerpo.position.x - this.x) > 70 * this.escala()) return;
     this.mirar(caja.cuerpo.position.x < this.x);
@@ -549,6 +700,7 @@ export class AnimadorRobot {
     });
     this.sinInterrupcion = false;
     await this.caminar(CASA, SERIES.caja);
+    if (this.cortarOrden) return;
     this.mirar(true);
     this.sinInterrupcion = true;
     await this.reproducir([...SERIES.recoger].reverse(), 12, {

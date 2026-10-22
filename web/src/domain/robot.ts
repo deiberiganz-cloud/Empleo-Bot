@@ -1,7 +1,7 @@
 import type { Oferta } from "./types";
 
 /**
- * Los cuadros del robot: 213 imágenes del modelo 3D renderizadas en Blender (archivos en web/public/robot/,
+ * Los cuadros del robot: 273 imágenes del modelo 3D renderizadas en Blender (archivos en web/public/robot/,
  * generados con blender/animar-robot.py y blender/sprites-a-webp.py). Todas miran a la derecha:
  * para ir a la izquierda el cuerpo se espeja con CSS.
  */
@@ -9,6 +9,7 @@ type Cuadro<N extends string> = `${N}-${number}`;
 export type Pose = "salto" | Cuadro<
   | "respirar" | "recoger" | "caminar" | "caja" | "pensar" | "entregar" | "corto" | "preocupado"
   | "golpe" | "golpe-caja" | "molesto" | "molesto-caja" | "sacar-flauta" | "flauta"
+  | "berrinche" | "soltar-borde" | "sacudir-manos"
 >;
 
 function cuadros<N extends string>(nombre: N, cantidad: number): Cuadro<N>[] {
@@ -32,9 +33,28 @@ export const SERIES = {
   molestoCaja: cuadros("molesto-caja", 16),
   sacarFlauta: cuadros("sacar-flauta", 8),
   flauta: cuadros("flauta", 16),
+  berrinche: cuadros("berrinche", 36),
+  soltarBorde: cuadros("soltar-borde", 8),
+  sacudirManos: cuadros("sacudir-manos", 16),
 } satisfies Record<string, Pose[]>;
 
 export const POSES: Pose[] = Object.values(SERIES).flat();
+
+/**
+ * Los cuadros del berrinche y de soltar-borde traen el cuerpo corrido a la derecha: estos son los píxeles de la imagen
+ * (de 360 de alto) que se le restan para que los pies no salten de un cuadro a otro.
+ */
+const DESFASE_BERRINCHE = [0, 5, 10, 16, 17, 22, 24, 24, 24, 24, 24, 24, 24, 12, 13, 12, ...Array<number>(20).fill(10)];
+const DESFASE_SOLTAR = [10, 14, 16, 16, 12, 6, 2, 0];
+const DESFASES = new Map<Pose, number>([
+  ...SERIES.berrinche.map((p, i) => [p, DESFASE_BERRINCHE[i]] as const),
+  ...SERIES.soltarBorde.map((p, i) => [p, DESFASE_SOLTAR[i]] as const),
+]);
+
+/** Cuánto hay que correr el robot hacia la izquierda (en px de una imagen de 360 de alto) para que esta pose apoye los pies donde debe. */
+export function desfaseDePose(pose: Pose): number {
+  return DESFASES.get(pose) ?? 0;
+}
 
 // ---- Movimiento ----
 /** Cuánto avanza el robot (a 90 px de alto) en un ciclo de 16 cuadros: así los pies no patinan. */
@@ -48,6 +68,17 @@ export const ESPERA_ORDENAR = 8000; // sin tocar las cajas por este tiempo, las 
 export const ESPERA_ORDENAR_CON_FLAUTA = 2000; // si está tocando la flauta reacciona antes: la corta y va a ordenar
 export const ESPERA_FLAUTA = 5000; // descansando por este tiempo, saca la flauta
 export const VELOCIDAD_GOLPE = 5; // una caja que llega más rápido que esto contra el robot lo golpea
+
+// ---- El berrinche ----
+/** Cada enojo gasta paciencia; al llegar a este número el robot revienta. */
+export const ENOJOS_PARA_BERRINCHE = 10;
+export const MS_RECUPERA_PACIENCIA = 30000; // sin enojos por este tiempo, la paciencia sube de a uno
+export const INCLINACION_GRADOS = 5; // la página gira hacia la izquierda
+export const MS_INCLINADA = 4000; // y se queda así este tiempo
+export const MS_TEMBLOR = 400; // antes de inclinarse, la tierra tiembla
+export const GRAVEDAD_INCLINADA_X = -0.7; // mucho más que sin(5°): así de verdad se deslizan
+export const FRICCION_INCLINADA = 0;
+export const ROCE_AIRE_INCLINADA = 0.008;
 
 // ---- Las cajas ----
 /** Dos columnas en la esquina izquierda (forma ":."). Las de base siempre quedan; las ofertas caen sobre la más baja. */
@@ -157,6 +188,29 @@ export function estaFueraDeLugar(caja: CajaMedida, todas: CajaMedida[], altoCarr
     inclinacion(caja.angulo) > INCLINACION_MAXIMA ||
     !estaApoyada(caja, todas, altoCarril)
   );
+}
+
+/** La paciencia del robot: enojos acumulados y cuándo fue el último cambio (ms). */
+export interface Paciencia {
+  enojos: number;
+  desde: number;
+}
+
+export const pacienciaIntacta = (ahora: number): Paciencia => ({ enojos: 0, desde: ahora });
+
+/** Un enojo más. */
+export function enojar(p: Paciencia, ahora: number): Paciencia {
+  return { enojos: p.enojos + 1, desde: ahora };
+}
+
+/** Sin enojos por `MS_RECUPERA_PACIENCIA`, vuelve un punto de paciencia (y vuelve a contar desde ahí). */
+export function recuperarPaciencia(p: Paciencia, ahora: number): Paciencia {
+  return p.enojos > 0 && ahora - p.desde >= MS_RECUPERA_PACIENCIA ? { enojos: p.enojos - 1, desde: ahora } : p;
+}
+
+/** ¿Se le acabó la paciencia? Entonces hace berrinche. */
+export function seAcaboLaPaciencia(p: Paciencia): boolean {
+  return p.enojos >= ENOJOS_PARA_BERRINCHE;
 }
 
 /** Cómo termina la escena: entrega la caja y salta, se quema con el "!", o vuelve con la caja. */

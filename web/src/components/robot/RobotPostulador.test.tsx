@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { POSES } from "../../domain/robot";
 import type { EstadoPostulador } from "../../domain/types";
+import { CajasFisicas } from "./cajas";
 import { RobotPostulador } from "./RobotPostulador";
 
 const trabajando: EstadoPostulador = {
@@ -28,7 +29,7 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("RobotPostulador", () => {
-  test("arranca respirando, con los 213 cuadros cargados, las 4 cajas de base y sin bloquear clics", () => {
+  test("arranca respirando, con los 273 cuadros cargados, las 4 cajas de base y sin bloquear clics", () => {
     const { container } = mostrar({ enCurso: null, enFila: 0, intentosHoy: 0, limite: 10 });
     expect(container.querySelectorAll(".robot__pose")).toHaveLength(POSES.length);
     expect(container.querySelector(".robot__pose--activa")).toHaveAttribute("src", "/robot/respirar-0.webp");
@@ -49,5 +50,26 @@ describe("RobotPostulador", () => {
     const carril = container.querySelector(".robot-carril") as HTMLElement;
     unmount();
     expect(carril.querySelectorAll(".caja-fisica")).toHaveLength(0);
+  });
+});
+
+describe("CajasFisicas: selección de texto", () => {
+  test("un mousedown sobre una caja no selecciona texto; fuera de las cajas sí se puede", () => {
+    const encabezado = document.createElement("header");
+    const carril = document.createElement("div");
+    encabezado.appendChild(carril);
+    document.body.appendChild(encabezado);
+    const cajas = new CajasFisicas({ carril, encabezado, alGolpear: () => {}, alAgarrar: () => {}, quieto: () => true, escala: () => 1 });
+    // en jsdom getBoundingClientRect es todo ceros: las coordenadas del clic son las locales de la caja
+    const { x, y } = cajas.cajas[0].cuerpo.position;
+    const clic = (clientX: number, clientY: number) => {
+      const e = new MouseEvent("mousedown", { bubbles: true, cancelable: true, clientX, clientY });
+      encabezado.dispatchEvent(e);
+      return e.defaultPrevented;
+    };
+    expect(clic(x, y)).toBe(true);
+    expect(clic(x + 500, y + 500)).toBe(false);
+    cajas.destruir();
+    encabezado.remove();
   });
 });

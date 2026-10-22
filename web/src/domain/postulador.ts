@@ -19,7 +19,7 @@ export function postuladorActivo(postulador: EstadoPostulador | undefined): bool
   return !!postulador && (postulador.enCurso !== null || postulador.enFila > 0);
 }
 
-/** "Hoy: 3 de 10 intentos" (para el título de la columna). */
+/** "Hoy: 3 de 20 intentos" (para el título de la columna). */
 export function textoIntentos(postulador: EstadoPostulador): string {
   return `Hoy: ${postulador.intentosHoy} de ${postulador.limite} intentos`;
 }

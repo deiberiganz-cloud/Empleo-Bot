@@ -11,6 +11,13 @@ import {
   finalDePostulacion,
   inclinacion,
   dentroDelNucleo,
+  desfaseDePose,
+  ENOJOS_PARA_BERRINCHE,
+  enojar,
+  MS_RECUPERA_PACIENCIA,
+  pacienciaIntacta,
+  recuperarPaciencia,
+  seAcaboLaPaciencia,
   limitarVelocidad,
   pasoDelCursor,
   POSES,
@@ -48,11 +55,14 @@ const ALTO = 100;
 const piso = (x: number, extra: Partial<CajaMedida> = {}): CajaMedida => ({ x, y: ALTO - CAJA_ALTO / 2, angulo: 0, velocidad: 0, ...extra });
 
 describe("cuadros", () => {
-  test("son los 213 del robot v2, sin repetidos", () => {
-    expect(POSES).toHaveLength(213);
-    expect(new Set(POSES).size).toBe(213);
+  test("son los 273 del robot v2, sin repetidos", () => {
+    expect(POSES).toHaveLength(273);
+    expect(new Set(POSES).size).toBe(273);
     expect(SERIES.caminar).toHaveLength(16);
     expect(SERIES.corto[35]).toBe("corto-35");
+    expect(SERIES.berrinche).toHaveLength(36);
+    expect(SERIES.soltarBorde).toHaveLength(8);
+    expect(SERIES.sacudirManos).toHaveLength(16);
   });
 });
 
@@ -153,5 +163,46 @@ describe("dentroDelNucleo", () => {
     const punto = { x: 100, y: 50 + 8 }; // 8 px abajo: dentro del ancho, pero fuera del alto si no está girada
     expect(dentroDelNucleo(punto, centro, 0)).toBe(false);
     expect(dentroDelNucleo(punto, centro, Math.PI / 2)).toBe(true);
+  });
+});
+
+describe("paciencia del robot", () => {
+  test("cada enojo suma uno y reinicia la cuenta de la recuperación", () => {
+    const p = enojar(enojar(pacienciaIntacta(0), 1000), 5000);
+    expect(p).toEqual({ enojos: 2, desde: 5000 });
+  });
+
+  test("revienta recién al llegar al tope", () => {
+    let p = pacienciaIntacta(0);
+    for (let i = 1; i < ENOJOS_PARA_BERRINCHE; i++) {
+      p = enojar(p, i);
+      expect(seAcaboLaPaciencia(p)).toBe(false);
+    }
+    expect(seAcaboLaPaciencia(enojar(p, 99))).toBe(true);
+  });
+
+  test("sin enojos por 30 s recupera un punto, y de a uno", () => {
+    const p = { enojos: 3, desde: 1000 };
+    expect(recuperarPaciencia(p, 1000 + MS_RECUPERA_PACIENCIA - 1)).toBe(p);
+    const uno = recuperarPaciencia(p, 1000 + MS_RECUPERA_PACIENCIA);
+    expect(uno).toEqual({ enojos: 2, desde: 1000 + MS_RECUPERA_PACIENCIA });
+    expect(recuperarPaciencia(uno, uno.desde + 1000)).toBe(uno); // el siguiente espera otros 30 s
+  });
+
+  test("con la paciencia llena no hay nada que recuperar", () => {
+    const p = pacienciaIntacta(0);
+    expect(recuperarPaciencia(p, 10 * MS_RECUPERA_PACIENCIA)).toBe(p);
+  });
+});
+
+describe("desfaseDePose", () => {
+  test("solo el berrinche y soltar-borde traen el cuerpo corrido", () => {
+    expect(desfaseDePose("berrinche-0")).toBe(0);
+    expect(desfaseDePose("berrinche-6")).toBe(24);
+    expect(desfaseDePose("berrinche-35")).toBe(10);
+    expect(desfaseDePose("soltar-borde-0")).toBe(10);
+    expect(desfaseDePose("soltar-borde-7")).toBe(0);
+    expect(desfaseDePose("respirar-3")).toBe(0);
+    expect(desfaseDePose("salto")).toBe(0);
   });
 });

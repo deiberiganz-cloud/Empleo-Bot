@@ -1,5 +1,6 @@
 // El sonido del robot: una melodía de flauta y efectos, todo sintetizado con Web Audio (sin archivos de audio).
 // Mientras el sonido está apagado no se crea ningún nodo: el AudioContext nace recién la primera vez que algo suena.
+import { MS_INCLINADA, MS_TEMBLOR } from "../../domain/robot";
 
 // La menor, 4/4, 84 pulsos por minuto. Casi pentatónica (la, do, re, mi, sol): ese es el "aire oriental".
 // Cada nota: [midi, pulsos]; null = silencio.
@@ -21,8 +22,8 @@ const ENOJO_PITIDOS: [number, number, number, number][] = [
 const ENOJO_PISOTONES = [0.3, 0.7]; // segundos en que cae cada pisotón
 const ENOJO_VAPOR = 0.75;
 const ENOJO_SEGUNDOS = 1.3;
-/** Bajito: es música de fondo. */
-export const VOLUMEN = 0.02;
+/** Casi inaudible: es música de fondo. */
+export const VOLUMEN = 0.001;
 /** Volumen propio de los efectos, aparte del de la flauta. */
 export const VOLUMEN_EFECTOS = 0.05;
 
@@ -45,10 +46,19 @@ interface EstadoCorto {
   cayo?: boolean;
 }
 
+interface EstadoBerrinche {
+  generacion: number;
+  desde: number;
+  clank?: boolean;
+  zumbido?: Canal | null;
+}
+
 type TipoFiltro = BiquadFilterType;
 
 const aleatorio = (a: number, b: number) => a + Math.random() * (b - a);
 const curvaDistorsion = () => Float32Array.from({ length: 256 }, (_, i) => Math.tanh(((i / 255) * 2 - 1) * 4));
+/** Lo que dura la tensión del berrinche: el tono del zumbido sube todo ese tiempo. */
+const SEGUNDOS_ZUMBIDO = 1 + (MS_INCLINADA + MS_TEMBLOR) / 1000 + 0.8;
 const nivelSacudon = (i: number) => (i <= 13 ? 1 : Math.max(0, 1 - (i - 13) / 11)); // el sacudón se apaga entre el 14 y el 24
 const nivelFuego = (i: number) => (i < 6 ? 0 : i < 12 ? (i - 5) / 7 : i <= 21 ? 1 : Math.max(0, 1 - (i - 21) / 5)); // crece 6-12, se apaga 21-26
 
@@ -65,6 +75,7 @@ export class Sonido {
   private generacion = 0;
   private readonly canales = new Set<Canal>();
   private corto: EstadoCorto | null = null;
+  private berrinche: EstadoBerrinche | null = null;
   private enojoHasta = 0; // hasta cuándo suena el refunfuño (ms); evita encimar otro
   private readonly temporizadores = new Set<ReturnType<typeof setTimeout>>();
 
@@ -292,6 +303,7 @@ export class Sonido {
   private pararEfectos() {
     this.generacion++;
     this.corto = null;
+    this.berrinche = null;
     this.enojoHasta = 0;
     const bus = this.busEfectos;
     const aEco = this.busAEco;
@@ -623,5 +635,89 @@ export class Sonido {
     for (const pisa of ENOJO_PISOTONES) this.bajon(audio, c, t + pisa, 120, 50, 0.12, 0.7);
     // vapor: ruido filtrado que sube de tono y se apaga
     this.estallido(audio, c, t + ENOJO_VAPOR, 3500, 0.45, 0.35, "bandpass", 0.8);
+  }
+
+  // Berrinche: "clank" metálico al agarrarse, zumbido eléctrico que sube de tono mientras hace fuerza,
+  // retumbe de tierra al inclinarse y "fiuu-pop" satisfecho
+  private clank() {
+    const base = this.canal(1);
+    if (!base) return;
+    const { c, audio } = base;
+    const t = audio.currentTime + 0.01;
+    this.estallido(audio, c, t, 2600, 0.06, 0.8, "bandpass", 4);
+    for (const [f, v] of [[820, 0.35], [1330, 0.25], [2170, 0.15]]) this.bajon(audio, c, t, f, f * 0.96, 0.18, v); // resonancias de metal
+    this.bajon(audio, c, t, 160, 70, 0.1, 0.7);
+  }
+
+  private zumbidoSube(): Canal | null {
+    const base = this.canal();
+    if (!base) return null;
+    const { c, audio } = base;
+    const t = audio.currentTime;
+    const o = audio.createOscillator();
+    o.type = "sawtooth";
+    o.frequency.setValueAtTime(70, t);
+    o.frequency.exponentialRampToValueAtTime(340, t + SEGUNDOS_ZUMBIDO);
+    const forma = audio.createWaveShaper();
+    forma.curve = curvaDistorsion();
+    const filtro = audio.createBiquadFilter();
+    filtro.type = "lowpass";
+    filtro.frequency.value = 1600;
+    const trem = audio.createGain();
+    trem.gain.value = 0.7;
+    o.connect(forma).connect(filtro).connect(trem).connect(c.out);
+    const lfo = audio.createOscillator();
+    lfo.frequency.value = 29;
+    const prof = audio.createGain();
+    prof.gain.value = 0.3;
+    lfo.connect(prof).connect(trem.gain);
+    o.start(t);
+    lfo.start(t);
+    c.poner(o, forma, filtro, trem);
+    c.poner(lfo, prof);
+    return c;
+  }
+
+  /** El berrinche, cuadro por cuadro (0 a 35): clank al agarrarse y zumbido que sube hasta que se suelta. */
+  sonarBerrinche(i: number) {
+    if (!this.prendido) return;
+    if (i === 0 || !this.berrinche || this.berrinche.generacion !== this.generacion) this.berrinche = { generacion: this.generacion, desde: Date.now() };
+    const b = this.berrinche;
+    if (i >= 13 && !b.clank) {
+      b.clank = true;
+      this.clank();
+    }
+    if (i >= 12 && !b.zumbido) b.zumbido = this.zumbidoSube();
+    if (b.zumbido && !b.zumbido.cerrado) this.temblar(b.zumbido, Math.min(1, 0.4 + (Date.now() - b.desde) / 4000)); // más chasquidos cuanto más fuerza
+  }
+
+  /** Se suelta (o termina la escena): se corta el zumbido. */
+  cerrarBerrinche() {
+    this.berrinche?.zumbido?.cerrar(0.12);
+    this.berrinche = null;
+  }
+
+  /** Temblor de tierra: grave y largo al inclinarse, corto al volver. */
+  sonarRetumbe(fuerte: boolean) {
+    const base = this.canal(1);
+    if (!base) return;
+    const { c, audio } = base;
+    const t = audio.currentTime + 0.02;
+    const dura = fuerte ? 1.1 : 0.5;
+    this.bajon(audio, c, t, fuerte ? 62 : 80, 28, dura, fuerte ? 1 : 0.8);
+    this.estallido(audio, c, t, 140, dura, 0.9, "lowpass", 0.7);
+    if (fuerte) for (const d of [0.15, 0.35, 0.6]) this.estallido(audio, c, t + d, aleatorio(500, 1100), 0.06, 0.25, "bandpass", 2); // cajas que se arrastran
+  }
+
+  /** "Fiuu-pop" de satisfacción y un pitidito alegre. */
+  sonarSatisfecho() {
+    const base = this.canal(1);
+    if (!base) return;
+    const { c, audio } = base;
+    const t = audio.currentTime + 0.03;
+    this.pitido(audio, c, t, 500, 1500, 0.28, 0.6);
+    this.estallido(audio, c, t + 0.3, 1400, 0.05, 0.9, "bandpass", 2);
+    this.bajon(audio, c, t + 0.3, 700, 300, 0.06, 0.5);
+    this.pitido(audio, c, t + 0.45, 900, 1100, 0.12, 0.5);
   }
 }

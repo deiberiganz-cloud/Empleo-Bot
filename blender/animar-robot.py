@@ -187,6 +187,7 @@ EFECTOS = [h[0] for h in VAPOR] + [caja, cinta, flauta_obj, *flauta_obj.children
 # --- Ayudas de pose ---
 def reposo():
     arm.location = (0, 0, 0)
+    arm.rotation_euler = (0, 0, 0)
     for b in P:
         b.rotation_euler = (0, 0, 0)
     for o in EFECTOS:
@@ -536,17 +537,24 @@ def golpe(f, n, con_caja):
     if con_caja:
         caja_en_manos()
 
-def vapor(f):
-    """Bocanadas de vapor que salen disparadas de los dos auriculares, hacia arriba y afuera."""
+def vapor(f, fuerza=1.0, sigue=False):
+    """Bocanadas de vapor que salen disparadas de los dos auriculares, hacia arriba y afuera.
+    `fuerza` > 1: más rápido y más grande; `sigue`: nace en los auriculares aunque la cabeza o el cuerpo giren."""
     bpy.context.view_layer.update()
     cabeza = arm.matrix_world @ P['Head'].head
+    giro_cabeza = arm.matrix_world @ P['Head'].matrix @ arm.data.bones['Head'].matrix_local.inverted()
+    giro_cuerpo = arm.rotation_euler.to_matrix()
     for i, (o, mezcla_vapor) in enumerate(VAPOR):
         lado = 1 if i % 2 else -1
-        p = (f / 6 + i / len(VAPOR)) % 1
-        oreja = cabeza + Vector((lado * 0.24, 0.02, 0.17))
+        p = (f * fuerza / 6 + i / len(VAPOR)) % 1
+        if sigue:
+            oreja = giro_cabeza @ (arm.data.bones['Head'].head_local + Vector((lado * 0.24, 0.02, 0.17)))
+            o.location = oreja + giro_cuerpo @ Vector((lado * 0.08 * fuerza * p, 0, 0)) + Vector((0, 0, 0.12 * fuerza * p))
+        else:
+            oreja = cabeza + Vector((lado * 0.24, 0.02, 0.17))
+            o.location = oreja + Vector((lado * 0.08 * p, 0, 0.12 * p))
         o.hide_render = False
-        o.location = oreja + Vector((lado * 0.08 * p, 0, 0.12 * p))
-        o.scale = [0.022 + 0.045 * p] * 3
+        o.scale = [(0.022 + 0.045 * p) * (1 + 0.4 * (fuerza - 1))] * 3
         mezcla_vapor.inputs[0].default_value = 1.0 - 0.7 * p ** 2
 
 def molesto(f, n, con_caja):
@@ -632,6 +640,174 @@ def tocar_flauta(f, n):
     cara('flauta')
     flauta_en_manos()
 
+# --- Berrinche: se agarra del borde del suelo y lo tira ---
+# El borde está a la izquierda de la pantalla (donde queda su pila de cajas). Desde la cámara en 3/4 eso es hacia -X en el
+# mundo: para agarrarlo de frente el robot gira el cuerpo 90° (mira hacia la izquierda de la pantalla, de 3/4 hacia la cámara).
+GIRO_BORDE = -90                 # grados del cuerpo (0 = mira hacia la derecha de la pantalla, como al caminar)
+BORDE_DELANTE, BORDE_Z = 0.21, 0.06   # el borde: a 21 cm delante de los pies (justo delante de las puntas) y a ras del piso
+SEPARACION_MANOS = 0.13          # cada puño a este lado del eje del cuerpo, a lo largo del borde
+DESPLAZA = Vector((math.cos(ANGULO), math.sin(ANGULO), 0)) * 0.15   # se corre 15 cm hacia la derecha de la pantalla: inclinado, la cabeza se saldría del cuadro
+
+def capturar():
+    """Foto de toda la pose: giros de los huesos, posición y giro del cuerpo."""
+    return {'huesos': {b.name: tuple(b.rotation_euler) for b in P}, 'pos': tuple(arm.location), 'giro': tuple(arm.rotation_euler)}
+
+def poner(pose):
+    """Vuelve a una foto de pose."""
+    for b in P:
+        b.rotation_euler = pose['huesos'][b.name]
+    arm.location = pose['pos']; arm.rotation_euler = pose['giro']
+
+def entre_poses(a, b, t):
+    """Pose intermedia entre dos fotos (0 = a, 1 = b)."""
+    mix = lambda u, v: tuple(x + (y - x) * t for x, y in zip(u, v))
+    poner({'huesos': {k: mix(a['huesos'][k], b['huesos'][k]) for k in a['huesos']}, 'pos': mix(a['pos'], b['pos']), 'giro': mix(a['giro'], b['giro'])})
+
+def puño(lado):
+    """Centro del puño en el mundo (con la pose ya aplicada)."""
+    bpy.context.view_layer.update()
+    h = P[f'{lado}Hand']
+    return arm.matrix_world @ (h.head * 0.4 + h.tail * 0.6)
+
+def alcanzar(lado, objetivo, vueltas=25):
+    """Mueve el brazo (hombro y codo) hasta que el puño llegue al punto del mundo `objetivo` (mínimos cuadrados amortiguados).
+    Devuelve cuánto falta (metros)."""
+    import numpy as np
+    juntas = [(f'{lado}Arm', 0), (f'{lado}Arm', 1), (f'{lado}Arm', 2), (f'{lado}ForeArm', 0)]
+    limites = [(R(-170), R(60)), (R(-60), R(60)), (R(-100), R(100)), (R(-140), 0)]
+    leer = lambda: np.array([P[h].rotation_euler[i] for h, i in juntas])
+    def escribir(v):
+        for (h, i), x, (lo, hi) in zip(juntas, v, limites):
+            e = list(P[h].rotation_euler); e[i] = min(hi, max(lo, x)); P[h].rotation_euler = e
+    meta = np.array(list(objetivo))
+    q = leer(); q0 = q.copy()
+    for _ in range(vueltas):
+        escribir(q); base = np.array(list(puño(lado))); falta = meta - base
+        if np.linalg.norm(falta) < 0.002:
+            break
+        J = np.zeros((3, 4))
+        for k in range(4):
+            dq = q.copy(); dq[k] += 0.01; escribir(dq)
+            J[:, k] = (np.array(list(puño(lado))) - base) / 0.01
+        mu = 0.003   # amortigua y mantiene el brazo cerca de la pose de partida
+        q = q + np.linalg.solve(J.T @ J + mu * np.eye(4), J.T @ falta - mu * (q - q0))
+    escribir(q)
+    return float(np.linalg.norm(meta - np.array(list(puño(lado)))))
+
+def ciclo(f):
+    """Cuadro dentro del bucle de 12 (desde el cuadro 24 se repite); antes del bucle, el cuadro tal cual."""
+    return (f - 24) % 12 if f >= 24 else f
+
+def agarrado(f, fuerza=1.0, k=None):
+    """Pose agachado con los dos puños en el borde del suelo. `fuerza` 0-1: cuánto aprieta y se echa atrás;
+    `k`: cuadro del ciclo que decide el temblor (así el bucle se repite igual). Devuelve lo que le faltó a cada puño."""
+    reposo(); cara('furia')
+    k = ciclo(f) if k is None else k
+    giro, baja = tramo(f, 0, 6), tramo(f, 5, 13)
+    arm.rotation_euler = (0, 0, R(GIRO_BORDE) * giro)
+    corre = DESPLAZA * giro
+    # sentadilla profunda con el torso muy inclinado: es lo único que deja los puños a ras del piso (los brazos son cortos)
+    rot('Hips', 58 * baja)   # la suma de giros de cadera, muslo, pierna y pie da 0: las suelas quedan planas
+    for lado in ('Left', 'Right'):
+        rot(f'{lado}UpLeg', -(119 + 6 * fuerza) * baja); rot(f'{lado}Leg', (89 + 6 * fuerza) * baja); rot(f'{lado}Foot', -28 * baja)
+    rot('Spine1', (40 + 5 * fuerza) * baja); rot('Neck', -(44 + 4 * fuerza) * baja); rot('Head', -6 * baja)
+    rot('LeftEar', -30 + 8 * fuerza); rot('RightEar', -30 + 8 * fuerza)
+    if f < 5:   # pisotón mientras gira
+        pisa = max(0.0, math.sin(math.pi * f / 2.5))
+        rot('RightUpLeg', -22 * pisa); rot('RightLeg', 36 * pisa); rot('RightFoot', -12 * pisa)
+    # temblor: otro en cada cuadro, pero igual en cada vuelta del bucle
+    azar_f = random.Random(500 + k)
+    tiembla = tramo(f, 10, 16) * (0.4 + 0.6 * fuerza)
+    for hueso, fz in (('Spine1', 2.5), ('Neck', 3), ('Head', 4), ('LeftEar', 10), ('RightEar', 10)):
+        sumar(hueso, *(azar_f.uniform(-fz, fz) * tiembla for _ in range(3)))
+    # los pies siempre apoyados: se baja el cuerpo hasta que las puntas toquen el piso (z = 0,02 en reposo)
+    bpy.context.view_layer.update()
+    arm.location.z += 0.02 - min((arm.matrix_world @ P[f'{l}ToeBase'].tail).z for l in ('Left', 'Right')) if f >= 5 else 0
+    arm.location += corre + Vector([azar_f.uniform(-0.004, 0.004) * tiembla for _ in range(3)])
+    # brazos: primero tiesos hacia atrás, con los puños apretados; después los puños buscan el borde
+    for lado, s in (('Left', 1), ('Right', -1)):
+        rot(f'{lado}Arm', 12, 0, -s * 14); rot(f'{lado}ForeArm', -25)
+    errores = []
+    if baja > 0.01:
+        tiesa = capturar()
+        for lado, s in (('Left', 1), ('Right', -1)):
+            # el borde queda delante de los pies (hacia donde mira el cuerpo) y los puños a cada lado
+            local = Vector((s * SEPARACION_MANOS + azar_f.uniform(-0.004, 0.004) * tiembla, -BORDE_DELANTE, BORDE_Z + azar_f.uniform(-0.004, 0.004) * tiembla))
+            errores.append(alcanzar(lado, corre + arm.rotation_euler.to_matrix() @ local))
+        if baja < 1.0:   # a medio camino los puños van del costado al borde
+            entre_poses(tiesa, capturar(), baja)
+    vapor(f, fuerza=1.0 + 0.6 * tramo(f, 2, 10), sigue=True)
+    return errores
+
+def chispas_en_manos(f):
+    """Chispas eléctricas que saltan alrededor de los dos puños; cada cuadro otras (y se repiten con el bucle)."""
+    azar_f = random.Random(900 + ciclo(f))
+    centros = [puño('Left'), puño('Right')]
+    intensidad = tramo(f, 10, 16)
+    for i, c in enumerate(CHISPAS):
+        if azar_f.random() < 0.85 * intensidad:
+            c.hide_render = False
+            c.location = Vector(centros[i % 2]) + Vector((azar_f.uniform(-0.08, 0.08), azar_f.uniform(-0.08, 0.08), azar_f.uniform(-0.02, 0.10)))
+            c.rotation_euler = (azar_f.uniform(0, 3), azar_f.uniform(0, 3), azar_f.uniform(0, 3))
+            c.scale = [azar_f.uniform(1.2, 2.4)] * 3
+
+def berrinche(f, n):
+    """Furioso: gira hacia el borde del suelo, se agacha, lo agarra con las dos manos y tira soltando chispas. Desde el cuadro 24 es un bucle de 12."""
+    agarrado(f, fuerza=tramo(f, 12, 24))
+    chispas_en_manos(f)
+
+def soltar_borde(f, n):
+    """Suelta el borde, se endereza y gira de vuelta: el último cuadro es la pose de respirar 0."""
+    agarrado(24, fuerza=1.0)
+    inicio = capturar()
+    reposo(); respirar(0, 16)
+    entre_poses(inicio, capturar(), suave((f + 1) / n))
+    if f < 3:
+        cara('furia'); vapor(f, fuerza=1.6, sigue=True)
+    else:
+        cara('sonriente')
+
+# --- Sacudirse las manos ---
+def manos_frotando(f):
+    """Los dos puños delante de la panza, palma contra palma: cada uno se desliza hacia adelante y atrás, uno contra el otro."""
+    vaiven = math.sin(2 * math.pi * 3 * (f - 3) / 12)   # tres frotadas entre los cuadros 3 y 15
+    for lado, s in (('Left', 1), ('Right', -1)):
+        # centro de las palmas, a la altura de la panza, un poco separadas entre sí
+        alcanzar(lado, arm.matrix_world @ Vector((s * 0.022, -0.175 - 0.06 * vaiven * s, 0.41 + 0.02 * abs(vaiven))))
+        rot(f'{lado}ShoulderPad', -4)
+
+def polvo(f, desde, centro):
+    """Partículas grises chicas (como las cenizas) que se desprenden de las manos y caen."""
+    for i, (o, (px_, py_, pz_), dx, dy, demora, giro) in enumerate(CENIZAS[:24]):
+        if i % 6 == 0:   # sin brasas: solo polvo gris
+            continue
+        nace = desde + i * 0.45
+        if f < nace:
+            continue
+        s = (f - nace) / 12
+        o.hide_render = False
+        o.location = Vector(centro) + Vector(((px_ - 0.5) * 0.08 + dx * s * 0.8, (py_ - 0.5) * 0.06 + dy * s, 0.01 * pz_ - 1.2 * s * s))
+        o.rotation_euler = (R(giro + 220 * s), R(giro * 0.5 + 160 * s), 0)
+        o.scale = [1.5 * (1 - tramo(f, nace + 6, nace + 10))] * 3
+
+def sacudir_manos(f, n):
+    """Satisfecho: junta las palmas y se las sacude un par de veces, como quitándose el polvo; empieza y termina en la pose de respirar 0."""
+    reposo(); respirar(0, n)
+    inicio = capturar()
+    reposo()
+    # los brazos suben, las manos se frotan (cuadros 3 a 12) y bajan de nuevo
+    arriba = tramo(f, 0, 3) * (1 - tramo(f, 12, 15))
+    brazos_abajo(); arm.location = (0, 0, 0)
+    rot('Spine1', -3); rot('Neck', 2); rot('Head', -5, 0, 0)   # pecho afuera, la cabeza un poco levantada, orgulloso
+    rot('LeftEar', 6); rot('RightEar', 6)
+    for lado, s in (('Left', 1), ('Right', -1)):
+        rot(f'{lado}Arm', -20, 0, s * 8); rot(f'{lado}ForeArm', -75)   # codos doblados, antebrazos hacia adelante
+    manos_frotando(f)
+    entre_poses(inicio, capturar(), arriba)
+    cara('satisfecho' if 2 <= f <= 13 else 'sonriente')
+    if 4 <= f <= 15:
+        polvo(f, 4, (puño('Left') + puño('Right')) / 2)
+
 # --- Lista de cuadros: nombre -> función que arma la pose ---
 def serie(nombre, n, funcion):
     return {f'{nombre}-{i}': (lambda i=i: funcion(i, n)) for i in range(n)}
@@ -652,6 +828,9 @@ CUADROS = {
     **serie('molesto-caja', 16, lambda f, n: molesto(f, n, True)),
     **serie('sacar-flauta', 8, sacar_flauta),
     **serie('flauta', 16, tocar_flauta),
+    **serie('berrinche', 36, berrinche),
+    **serie('soltar-borde', 8, soltar_borde),
+    **serie('sacudir-manos', 16, sacudir_manos),
 }
 
 if __name__ == '__main__':

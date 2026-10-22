@@ -181,23 +181,23 @@ describe('crearPostulador', () => {
         await postulador.despertar()
         assert.equal(durante.enCurso.titulo, 'Soporte Junior')
         assert.equal(durante.enFila, 1)
-        assert.deepEqual(postulador.estado(), { enCurso: null, enFila: 0, intentosHoy: 2, limite: 10 })
+        assert.deepEqual(postulador.estado(), { enCurso: null, enFila: 0, intentosHoy: 2, limite: 20 })
     })
 
-    test('límite diario: con 10 intentos hoy no postula más, y al día siguiente retoma', async () => {
-        for (let i = 0; i < 12; i++) aceptar(manager, { url: `https://ejemplo.com/o${i}` })
+    test('límite diario: con 20 intentos hoy no postula más, y al día siguiente retoma', async () => {
+        for (let i = 0; i < 22; i++) aceptar(manager, { url: `https://ejemplo.com/o${i}` })
         let ahora = AHORA
         const postulador = crear(async () => respuesta('postulada'), { ahora: () => ahora })
         await postulador.despertar()
-        assert.equal(llamadas.length, 10)
-        assert.equal(postulador.estado().intentosHoy, 10)
+        assert.equal(llamadas.length, 20)
+        assert.equal(postulador.estado().intentosHoy, 20)
         assert.equal(postulador.estado().enFila, 2)
         await postulador.despertar()
-        assert.equal(llamadas.length, 10)
+        assert.equal(llamadas.length, 20)
         // Al día siguiente el contador vuelve a cero (se cuenta en la base, por día local).
         ahora = new Date(2026, 9, 19, 9, 0)
         await postulador.despertar()
-        assert.equal(llamadas.length, 12)
+        assert.equal(llamadas.length, 22)
         assert.equal(postulador.estado().intentosHoy, 2)
     })
 

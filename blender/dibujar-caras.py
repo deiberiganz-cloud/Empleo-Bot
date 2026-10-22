@@ -136,7 +136,26 @@ def flauta(d):
     cx, cy = a_px(0.0, 0.732); r = m_px(0.014); g = m_px(0.009)
     d.ellipse((cx - r, cy - r, cx + r, cy + r), outline=TRAZO, width=round(g))
 
+def furia(d):
+    """Furioso: cejas en V muy cerradas, ojos en zigzag y boca de dientes apretados."""
+    for s in (-1, 1):
+        cx = s * OJOS_X
+        linea(d, [(cx + s * 0.034, 0.842), (cx - s * 0.026, 0.808)], 0.017)
+        linea(d, [(cx - 0.022, 0.794), (cx - 0.011, 0.774), (cx, 0.794), (cx + 0.011, 0.774), (cx + 0.022, 0.794)], 0.010)
+    linea(d, [(-0.04, 0.716), (-0.04, 0.738), (0.04, 0.738), (0.04, 0.716), (-0.04, 0.716)], 0.008)
+    for x in (-0.02, 0.0, 0.02):
+        linea(d, [(x, 0.716), (x, 0.738)], 0.006)
+
+def satisfecho(d):
+    """Satisfecho y orgulloso: ojos cerrados contentos (^ ^) y sonrisa ancha."""
+    for s in (-1, 1):
+        cx = s * OJOS_X
+        linea(d, [(cx + 0.024 * math.cos(math.radians(a)), OJOS_Z - 0.006 + 0.020 * math.sin(math.radians(a))) for a in range(180, -1, -15)], 0.012)
+    linea(d, [(0.040 * math.cos(math.radians(a)), 0.744 - 0.024 * math.sin(math.radians(a))) for a in range(180, -1, -15)], 0.012)
+
 CARAS = {
+    'furia': furia,
+    'satisfecho': satisfecho,
     'golpe': golpe,
     'flauta': flauta,
     'molesto': molesto,
