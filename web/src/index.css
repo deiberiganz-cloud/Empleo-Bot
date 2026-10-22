@@ -1125,6 +1125,9 @@ button:disabled {
   --carton: #c99a62;
   --carton-cinta: #e2c193;
   --carton-borde: #1b1a33;
+  /* El carro de las cajas tampoco cambia con el modo oscuro. */
+  --carro: #8f99a5;
+  --carro-manija: #3b6fd4;
   position: absolute;
   inset: 0;
   z-index: 2;
@@ -1171,6 +1174,37 @@ button:disabled {
   width: 22px;
   height: 17px;
   z-index: 3;
+}
+
+.robot-carril__carro {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 80px;
+  height: 64px;
+  overflow: visible;
+}
+
+.carro__cuerpo {
+  fill: var(--carro);
+  stroke: var(--carton-borde);
+  stroke-width: 1.4;
+}
+
+.carro__manija {
+  fill: var(--carro-manija);
+  stroke: var(--carton-borde);
+  stroke-width: 1.4;
+}
+
+.carro__rueda {
+  fill: #2b2c36;
+  stroke: var(--carton-borde);
+  stroke-width: 1.4;
+}
+
+.carro__eje {
+  fill: #b9bdc6;
 }
 
 .robot-carril__buzon {

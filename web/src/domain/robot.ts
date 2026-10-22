@@ -61,7 +61,7 @@ export function desfaseDePose(pose: Pose): number {
 export const PX_POR_CICLO = 46;
 export const ALTO_BASE = 90;
 export const VELOCIDAD = 75; // px por segundo
-export const CASA = 104; // la esquina izquierda donde descansa
+export const CASA = 108; // la esquina izquierda donde descansa (el robot en reposo no se monta sobre el carro, que termina en x≈74)
 export const ANTES_DEL_BORDE = 92; // dónde entrega la caja, contado desde la derecha
 export const MS_BLOQUEADO = 6000; // cuánto espera con el "!" antes de volver (si no lo tocan antes)
 export const ESPERA_ORDENAR = 8000; // sin tocar las cajas por este tiempo, las ordena solo
@@ -81,8 +81,15 @@ export const FRICCION_INCLINADA = 0;
 export const ROCE_AIRE_INCLINADA = 0.008;
 
 // ---- Las cajas ----
-/** Dos columnas en la esquina izquierda (forma ":."). Las de base siempre quedan; las ofertas caen sobre la más baja. */
-export const COLUMNAS = [16, 44];
+/** Dos columnas sobre el carro (forma ":."). Las de base siempre quedan; las ofertas caen sobre la más baja. */
+export const COLUMNAS = [28, 55];
+/** El carro plataforma donde se guardan las cajas (px desde el borde izquierdo del carril y desde el piso). */
+export const PLATAFORMA_ALTO = 13; // la cubierta llega hasta esta altura sobre el piso
+export const PLATAFORMA_X = 8;
+export const PLATAFORMA_ANCHO = 66;
+export const MANIJA_X = 5;
+export const MANIJA_ANCHO = 7;
+export const MANIJA_ALTO = 63; // altura del puño sobre el piso
 export const CAJA_ANCHO = 26;
 export const CAJA_ALTO = 20;
 export const CAJAS_BASE = 4;
@@ -159,10 +166,15 @@ export function inclinacion(angulo: number): number {
   return Math.min(a, Math.PI - a);
 }
 
+/** La altura (y) de la cubierta del carro, donde se apoya la base de las columnas. */
+export function pisoColumnas(altoCarril: number): number {
+  return altoCarril - PLATAFORMA_ALTO;
+}
+
 /** El techo de una columna: lo más alto de cualquier caja que se meta en su ancho (así la nueva nunca nace encimada). */
 export function techoColumna(columna: number, cajas: CajaMedida[], altoCarril: number): number {
   const enColumna = cajas.filter((c) => Math.abs(c.x - columna) < CAJA_ANCHO);
-  return enColumna.length ? Math.min(...enColumna.map((c) => c.y - CAJA_ALTO / 2)) : altoCarril;
+  return enColumna.length ? Math.min(...enColumna.map((c) => c.y - CAJA_ALTO / 2)) : pisoColumnas(altoCarril);
 }
 
 /** La columna con el techo más bajo (empate: la de la derecha, la de la caja sola). */
@@ -171,14 +183,16 @@ export function columnaMasBaja(cajas: CajaMedida[], altoCarril: number): number 
   return techoColumna(derecha, cajas, altoCarril) >= techoColumna(izquierda, cajas, altoCarril) ? derecha : izquierda;
 }
 
-/** Apoyada = su base está cerca del piso o encima de otra caja de su misma columna. */
+/** Apoyada = su base está sobre la cubierta del carro (no más abajo: eso sería el suelo) o encima de otra caja de su misma columna. */
 export function estaApoyada(caja: CajaMedida, otras: CajaMedida[], altoCarril: number): boolean {
-  if (caja.y + CAJA_ALTO / 2 > altoCarril - MARGEN_PISO) return true;
+  const base = caja.y + CAJA_ALTO / 2;
+  const piso = pisoColumnas(altoCarril);
+  if (base > piso - MARGEN_PISO && base < piso + MARGEN_PISO) return true;
   return otras.some((o) => o !== caja && Math.abs(o.x - caja.x) < CAJA_ANCHO * 0.7 && Math.abs(o.y - caja.y - CAJA_ALTO) < MARGEN_PISO);
 }
 
 /**
- * Fuera de lugar: quieta y a más de 10 px de su columna, inclinada (> 0.35 rad) o sin apoyo en piso ni caja.
+ * Fuera de lugar: quieta y a más de 10 px de su columna, inclinada (> 0.35 rad) o sin apoyo en el carro ni en otra caja.
  * Se juzga por la posición, no por quién la tocó. Una caja que alguien está sosteniendo o que todavía se mueve no cuenta.
  */
 export function estaFueraDeLugar(caja: CajaMedida, todas: CajaMedida[], altoCarril: number, agarrada = false): boolean {

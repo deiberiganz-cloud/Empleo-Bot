@@ -16,6 +16,8 @@ import {
   enojar,
   MS_RECUPERA_PACIENCIA,
   pacienciaIntacta,
+  PLATAFORMA_ALTO,
+  pisoColumnas,
   recuperarPaciencia,
   seAcaboLaPaciencia,
   limitarVelocidad,
@@ -52,7 +54,9 @@ describe("textoGlobo", () => {
 });
 
 const ALTO = 100;
-const piso = (x: number, extra: Partial<CajaMedida> = {}): CajaMedida => ({ x, y: ALTO - CAJA_ALTO / 2, angulo: 0, velocidad: 0, ...extra });
+const PLATAFORMA = ALTO - PLATAFORMA_ALTO; // la cubierta del carro
+const piso = (x: number, extra: Partial<CajaMedida> = {}): CajaMedida => ({ x, y: PLATAFORMA - CAJA_ALTO / 2, angulo: 0, velocidad: 0, ...extra });
+const suelo = (x: number): CajaMedida => ({ x, y: ALTO - CAJA_ALTO / 2, angulo: 0, velocidad: 0 });
 
 describe("cuadros", () => {
   test("son los 273 del robot v2, sin repetidos", () => {
@@ -87,12 +91,14 @@ describe("columnas", () => {
   });
 
   test("la nueva cae sobre la columna más baja; con empate, la de la derecha", () => {
-    const base = [piso(COLUMNAS[0]), piso(COLUMNAS[0], { y: ALTO - CAJA_ALTO * 1.5 }), piso(COLUMNAS[1])];
-    expect(techoColumna(COLUMNAS[0], base, ALTO)).toBe(ALTO - CAJA_ALTO * 2);
-    expect(techoColumna(COLUMNAS[1], base, ALTO)).toBe(ALTO - CAJA_ALTO);
+    const base = [piso(COLUMNAS[0]), piso(COLUMNAS[0], { y: PLATAFORMA - CAJA_ALTO * 1.5 }), piso(COLUMNAS[1])];
+    expect(techoColumna(COLUMNAS[0], base, ALTO)).toBe(PLATAFORMA - CAJA_ALTO * 2);
+    expect(techoColumna(COLUMNAS[1], base, ALTO)).toBe(PLATAFORMA - CAJA_ALTO);
     expect(columnaMasBaja(base, ALTO)).toBe(COLUMNAS[1]);
     expect(columnaMasBaja([piso(COLUMNAS[0]), piso(COLUMNAS[1])], ALTO)).toBe(COLUMNAS[1]);
     expect(columnaMasBaja([], ALTO)).toBe(COLUMNAS[1]);
+    expect(techoColumna(COLUMNAS[0], [], ALTO)).toBe(pisoColumnas(ALTO));
+    expect(pisoColumnas(ALTO)).toBe(PLATAFORMA);
   });
 });
 
@@ -105,6 +111,12 @@ describe("estaFueraDeLugar", () => {
   test("a más de 10 px de la columna → desordenada", () => {
     const caja = piso(COLUMNAS[0] + 11);
     expect(estaFueraDeLugar(caja, [caja], ALTO)).toBe(true);
+  });
+
+  test("apoyada en la plataforma, en su columna → en orden; a la altura del suelo → desordenada", () => {
+    expect(estaFueraDeLugar(piso(COLUMNAS[1]), [], ALTO)).toBe(false);
+    expect(estaFueraDeLugar(suelo(COLUMNAS[1]), [], ALTO)).toBe(true);
+    expect(estaFueraDeLugar(suelo(120), [], ALTO)).toBe(true); // tirada en el suelo lejos del carro
   });
 
   test("inclinada más de 0.35 rad → desordenada", () => {

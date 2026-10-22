@@ -22,6 +22,13 @@ import {
   FRICCION_INCLINADA,
   GRAVEDAD_INCLINADA_X,
   limitarVelocidad,
+  MANIJA_ALTO,
+  MANIJA_ANCHO,
+  MANIJA_X,
+  PLATAFORMA_ALTO,
+  PLATAFORMA_ANCHO,
+  PLATAFORMA_X,
+  pisoColumnas,
   pasoDelCursor,
   ROCE_AIRE_INCLINADA,
   techoColumna,
@@ -101,6 +108,8 @@ export class CajasFisicas {
   private readonly paredes = [0, 1, 2].map((i) =>
     Bodies.rectangle(0, 0, i < 2 ? 40 : 4000, i < 2 ? 2000 : 40, { isStatic: true, collisionFilter: { category: CATEGORIA_PARED } }),
   );
+  /** El carro: la cubierta (sólida hasta el piso) y la manija. */
+  private readonly carro = [0, 1].map(() => Bodies.rectangle(0, 0, 10, 10, { isStatic: true, collisionFilter: { category: CATEGORIA_PARED } }));
   private readonly cuerpoRobot = Bodies.rectangle(0, 0, 26, 70, { isStatic: true, chamfer: { radius: 8 }, collisionFilter: { category: CATEGORIA_ROBOT } });
   private readonly mouse: Matter.Mouse & ManejadoresMouse;
   private readonly agarre: Matter.MouseConstraint;
@@ -121,7 +130,7 @@ export class CajasFisicas {
 
   constructor(op: OpcionesCajas) {
     this.op = op;
-    Composite.add(this.motor.world, [...this.paredes, this.cuerpoRobot]);
+    Composite.add(this.motor.world, [...this.paredes, ...this.carro, this.cuerpoRobot]);
     this.acomodarParedes();
 
     this.mouse = Mouse.create(op.encabezado) as Matter.Mouse & ManejadoresMouse;
@@ -140,9 +149,10 @@ export class CajasFisicas {
     this.escucharCursor();
     this.escucharPuntero();
 
-    // las 4 de base: 3 apiladas a la izquierda y 1 sola al lado
-    for (let i = 0; i < CAJAS_BASE - 1; i++) this.nueva(COLUMNAS[0], this.alto() - CAJA_ALTO / 2 - i * CAJA_ALTO, { base: true, giro: 0 });
-    this.nueva(COLUMNAS[1], this.alto() - CAJA_ALTO / 2, { base: true, giro: 0 });
+    // las 4 de base, apoyadas en el carro: 3 apiladas a la izquierda y 1 sola al lado
+    const piso = pisoColumnas(this.alto());
+    for (let i = 0; i < CAJAS_BASE - 1; i++) this.nueva(COLUMNAS[0], piso - CAJA_ALTO / 2 - i * CAJA_ALTO, { base: true, giro: 0 });
+    this.nueva(COLUMNAS[1], piso - CAJA_ALTO / 2, { base: true, giro: 0 });
   }
 
   private ancho = () => this.op.carril.clientWidth;
@@ -159,6 +169,16 @@ export class CajasFisicas {
     Body.setPosition(this.paredes[0], { x: -20, y: this.alto() / 2 });
     Body.setPosition(this.paredes[1], { x: this.ancho() + 20, y: this.alto() / 2 });
     Body.setPosition(this.paredes[2], { x: this.ancho() / 2, y: this.alto() + 20 });
+    // el carro se rehace con el alto actual (el piso es y = alto)
+    const [plataforma, manija] = this.carro;
+    const alto = this.alto();
+    const lado = (cuerpo: Matter.Body, x: number, ancho: number, arriba: number) => {
+      const h = alto - arriba;
+      Body.setVertices(cuerpo, Matter.Vertices.fromPath(`0 0 ${ancho} 0 ${ancho} ${h} 0 ${h}`, cuerpo));
+      Body.setPosition(cuerpo, { x: x + ancho / 2, y: arriba + h / 2 });
+    };
+    lado(plataforma, PLATAFORMA_X, PLATAFORMA_ANCHO, alto - PLATAFORMA_ALTO);
+    lado(manija, MANIJA_X, MANIJA_ANCHO, alto - MANIJA_ALTO);
   }
 
   // ---- Arrastre ----
@@ -427,7 +447,7 @@ export class CajasFisicas {
       Sleeping.set(cuerpo, false);
     }
     // el piso también resbala (el roce estático de dos cuerpos es el mayor de los dos)
-    for (const p of this.paredes) p.friction = p.frictionStatic = FRICCION_INCLINADA;
+    for (const p of [...this.paredes, ...this.carro]) p.friction = p.frictionStatic = FRICCION_INCLINADA;
     // empujoncitos por si alguna quedó trabada
     for (const ms of [300, 900, 1600]) {
       this.despues(ms, () => {
@@ -450,7 +470,7 @@ export class CajasFisicas {
       cuerpo.frictionAir = CAJA_ROCE_AIRE;
       Sleeping.set(cuerpo, false);
     }
-    for (const p of this.paredes) {
+    for (const p of [...this.paredes, ...this.carro]) {
       p.friction = 0.1;
       p.frictionStatic = 0.5;
     }

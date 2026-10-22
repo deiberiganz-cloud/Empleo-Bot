@@ -34,6 +34,7 @@ describe("RobotPostulador", () => {
     expect(container.querySelectorAll(".robot__pose")).toHaveLength(POSES.length);
     expect(container.querySelector(".robot__pose--activa")).toHaveAttribute("src", "/robot/respirar-0.webp");
     expect(container.querySelectorAll(".caja-fisica")).toHaveLength(4);
+    expect(container.querySelector(".robot-carril__carro")).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
@@ -71,5 +72,26 @@ describe("CajasFisicas: selección de texto", () => {
     expect(clic(x + 500, y + 500)).toBe(false);
     cajas.destruir();
     encabezado.remove();
+  });
+});
+
+describe("CajasFisicas: carro", () => {
+  test("la plataforma y la manija quedan donde se dibujan, y la acomodación repetida no las corre", () => {
+    const encabezado = document.createElement("header");
+    const carril = document.createElement("div");
+    Object.defineProperty(carril, "clientWidth", { value: 600 });
+    Object.defineProperty(carril, "clientHeight", { value: 100 });
+    encabezado.appendChild(carril);
+    const cajas = new CajasFisicas({ carril, encabezado, alGolpear: () => {}, alAgarrar: () => {}, quieto: () => true, escala: () => 1 });
+    cajas.acomodarParedes();
+    const [plataforma, manija] = (cajas as unknown as { carro: { bounds: { min: { x: number; y: number }; max: { x: number; y: number } } }[] }).carro;
+    expect(plataforma.bounds.min.x).toBeCloseTo(8);
+    expect(plataforma.bounds.max.x).toBeCloseTo(74);
+    expect(plataforma.bounds.min.y).toBeCloseTo(87);
+    expect(plataforma.bounds.max.y).toBeCloseTo(100);
+    expect(manija.bounds.min.x).toBeCloseTo(5);
+    expect(manija.bounds.max.x).toBeCloseTo(12);
+    expect(manija.bounds.min.y).toBeCloseTo(37);
+    cajas.destruir();
   });
 });

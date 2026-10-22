@@ -96,6 +96,17 @@ export function RobotPostulador({ onVerBloqueada }: { onVerBloqueada: () => void
         <path className="robot-carril__bandera" d="M26 21V8l6 3-6 3" />
       </svg>
 
+      {/* El carro plataforma donde se guardan las cajas (piso en y = 64) */}
+      <svg className="robot-carril__carro" viewBox="0 0 80 64" aria-hidden="true">
+        <circle className="carro__rueda" cx="20" cy="59.5" r="4.5" />
+        <circle className="carro__rueda" cx="64" cy="59.5" r="4.5" />
+        <circle className="carro__eje" cx="20" cy="59.5" r="1.6" />
+        <circle className="carro__eje" cx="64" cy="59.5" r="1.6" />
+        <rect className="carro__cuerpo" x="7" y="4" width="4.5" height="49" rx="1.5" />
+        <rect className="carro__manija" x="5" y="1" width="12" height="5" rx="2.5" strokeWidth="1.2" />
+        <rect className="carro__cuerpo" x="8" y="50" width="66" height="6" rx="1.5" />
+      </svg>
+
       <div className="robot" ref={robot}>
         {estado?.enCurso && (
           <p className="robot__globo" role="status">
