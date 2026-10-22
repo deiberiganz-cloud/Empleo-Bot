@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BotonSonido } from "./components/BotonSonido";
 import { BotonTema } from "./components/BotonTema";
 import { RobotPostulador } from "./components/robot/RobotPostulador";
 import { ArchivoPage } from "./pages/ArchivoPage";
@@ -31,6 +32,7 @@ export function App() {
     <div className="pagina">
       <header className="encabezado">
         <h1 className="encabezado__marca">EMPLEO BOT</h1>
+        <BotonSonido />
         <BotonTema />
         <nav className="encabezado__nav" aria-label="Secciones">
           {VISTAS.map((opcion) => (
@@ -45,7 +47,7 @@ export function App() {
             </button>
           ))}
         </nav>
-        {/* El robot camina por el borde de abajo mientras el postulador trabaja */}
+        {/* El robot camina por el borde de abajo mientras el postulador trabaja, y juega con las cajas */}
         <RobotPostulador onVerBloqueada={() => setVista("seguimiento")} />
       </header>
 

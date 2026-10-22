@@ -1099,45 +1099,69 @@ button:disabled {
 }
 
 /* ---- Robot del postulador: camina por el borde del encabezado, por encima de las pestañas ----
-   Es "fantasma" para el mouse (pointer-events: none): los clics llegan a lo que está debajo.
-   Solo el "!" de una postulación bloqueada se puede tocar. */
+   Es "fantasma" para el mouse (pointer-events: none): los clics llegan a lo que está debajo (y al encabezado, que
+   recibe el arrastre de las cajas). Solo el "!" de una postulación bloqueada se puede tocar. */
 
+/* Recorta solo a los costados: hacia abajo deja asomar el globo que va bajo los pies del robot. */
 .encabezado {
-  overflow: hidden;
+  z-index: 5;
+  overflow-x: clip;
+  overflow-y: visible;
+  touch-action: pan-y;
 }
 
 .robot-carril {
   --alto-robot: 90px;
+  /* El cartón es cartón en los dos temas: estos colores no cambian con el modo oscuro. */
+  --carton: #c99a62;
+  --carton-cinta: #e2c193;
+  --carton-borde: #1b1a33;
   position: absolute;
   inset: 0;
   z-index: 2;
   pointer-events: none;
 }
 
-.robot-carril__pila {
+/* Las cajas con física: las posiciona el motor, acá solo se ven. */
+.caja-fisica {
   position: absolute;
-  bottom: 0;
-  left: 4px;
-  display: flex;
-  flex-direction: column-reverse;
-  align-items: center;
+  left: 0;
+  top: 0;
+  width: 26px;
+  height: 20px;
+  will-change: transform;
+  transition: opacity 0.18s;
 }
 
-.robot-carril__caja {
-  width: 18px;
-  height: 14px;
-  margin-top: -2px;
+.caja-fisica svg,
+.caja-voladora svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
 
-/* El cartón es cartón en los dos temas: estos colores no cambian con el modo oscuro. */
-.robot-carril__caja rect {
-  fill: #c99a62;
-  stroke: #7a5530;
-  stroke-width: 1.2;
+.caja-fisica.recogida {
+  opacity: 0;
 }
 
-.robot-carril__caja path {
-  fill: #e2c193;
+.caja-carton {
+  fill: var(--carton);
+  stroke: var(--carton-borde);
+  stroke-width: 1.6;
+}
+
+.caja-cinta {
+  fill: var(--carton-cinta);
+}
+
+.caja-voladora {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 22px;
+  height: 17px;
+  z-index: 3;
 }
 
 .robot-carril__buzon {
@@ -1150,11 +1174,49 @@ button:disabled {
   stroke: var(--text-secondary);
   stroke-width: 2;
   stroke-linejoin: round;
+  overflow: visible;
 }
 
 .robot-carril__bandera {
   fill: var(--status-critical);
   stroke: var(--status-critical);
+  transform-origin: 26px 21px;
+}
+
+.robot-carril__buzon.recibio .robot-carril__bandera {
+  animation: bandera 0.9s ease-in-out 2;
+}
+
+@keyframes bandera {
+  50% {
+    rotate: -35deg;
+  }
+}
+
+/* Notitas que salen flotando mientras toca la flauta. */
+.nota-musical {
+  position: absolute;
+  z-index: 3;
+  font: 700 15px/1 system-ui, "Segoe UI", Roboto, sans-serif;
+  color: var(--accent);
+  pointer-events: none;
+  animation: nota-flota 1.8s ease-out forwards;
+}
+
+@keyframes nota-flota {
+  0% {
+    opacity: 0;
+    translate: 0 0;
+    rotate: -10deg;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: var(--deriva, 10px) -46px;
+    rotate: 12deg;
+  }
 }
 
 .robot {
@@ -1187,6 +1249,7 @@ button:disabled {
   inset: 0;
   width: 100%;
   height: 100%;
+  max-width: none;
   opacity: 0;
 }
 
@@ -1195,12 +1258,29 @@ button:disabled {
 }
 
 .robot--saltando .robot__cuerpo {
-  animation: robot-salto 0.45s ease-in-out 2;
+  animation: robot-salto 0.45s cubic-bezier(0.3, 0.7, 0.4, 1) 2;
+}
+
+/* El golpe además lo sacude un instante. */
+.robot--golpeado .robot__cuerpo {
+  animation: robot-sacudon 0.35s ease-out;
+}
+
+@keyframes robot-sacudon {
+  20% {
+    translate: -4px 0;
+  }
+  45% {
+    translate: 3px 0;
+  }
+  70% {
+    translate: -1px 0;
+  }
 }
 
 @keyframes robot-salto {
   50% {
-    translate: 0 calc(var(--alto-robot) * -0.12);
+    translate: 0 calc(var(--alto-robot) * -0.14);
   }
 }
 
@@ -1208,8 +1288,8 @@ button:disabled {
   display: none;
   position: absolute;
   width: 28%;
-  left: 52%;
-  top: -6%;
+  left: 60%;
+  top: -10%;
   fill: none;
   stroke: var(--text-muted);
   stroke-width: 2;
@@ -1228,12 +1308,14 @@ button:disabled {
   }
 }
 
+/* El globo va centrado bajo los pies, con una puntita que apunta al robot. */
 .robot__globo {
   display: none;
   position: absolute;
-  top: 0;
-  left: 100%;
-  margin: 0 0 0 4px;
+  top: calc(100% + 8px);
+  left: 50%;
+  translate: -50% 0;
+  margin: 0;
   white-space: nowrap;
   background: var(--surface);
   color: var(--text-primary);
@@ -1242,45 +1324,91 @@ button:disabled {
   padding: 3px 10px;
   font-size: 11px;
   font-weight: 600;
+  box-shadow: var(--sombra-tarjeta);
+}
+
+.robot__globo::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  translate: -50% 0;
+  rotate: 45deg;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  border-top: 1px solid var(--border);
 }
 
 .robot--trabajando .robot__globo {
   display: block;
 }
 
+/* El "!": chico, arriba de la cabeza, sin tapar el robot. */
 .robot__alerta {
   position: absolute;
-  top: -4px;
-  left: 50%;
-  translate: -50% 0;
-  width: 44px;
-  height: 44px;
+  top: -10px;
+  left: 58%;
+  width: 20px;
+  height: 20px;
+  padding: 0;
   border-radius: 50%;
-  border: 2px solid var(--status-critical);
+  border: 1.5px solid var(--status-critical);
   background: var(--surface);
   color: var(--status-critical-text);
-  font-size: 22px;
-  font-weight: 900;
+  font: 900 13px/1 system-ui, "Segoe UI", Roboto, sans-serif;
   cursor: pointer;
   pointer-events: auto;
   animation: robot-latido 1s ease-in-out infinite;
 }
 
+/* Zona de toque de 44 px. */
+.robot__alerta::after {
+  content: "";
+  position: absolute;
+  inset: -12px;
+}
+
 @keyframes robot-latido {
   50% {
-    scale: 1.12;
+    scale: 1.15;
   }
+}
+
+/* Botón de sonido: al lado del de tema, prendido en dorado. */
+.boton-sonido {
+  right: 68px;
+}
+
+.boton-sonido[aria-pressed="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 @media (max-width: 420px) {
   .robot-carril {
     --alto-robot: 64px;
   }
+
+  /* En el celular no entran los dos botones juntos a la derecha sin pisar la marca: el de sonido va a la izquierda. */
+  .boton-sonido {
+    right: auto;
+    left: 16px;
+  }
+
+  /* (La regla de la marca de más arriba queda debajo de la base, así que se repite acá.) */
+  .encabezado__marca {
+    font-size: 22px;
+    letter-spacing: 3px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .robot--golpeado .robot__cuerpo,
   .robot__engranaje,
-  .robot__alerta {
+  .robot__alerta,
+  .robot-carril__buzon.recibio .robot-carril__bandera {
     animation: none;
   }
 }
