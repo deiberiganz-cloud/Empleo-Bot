@@ -21,7 +21,7 @@ const getOnBoard = {
 const alerta = { fuente: 'LinkedIn (alerta)', titulo: 'QA Tester', empresa: 'Cuatro', url: 'https://www.linkedin.com/jobs/view/4/', ubicacion: 'Argentina', descripcion: '', fecha: '2026-10-02' };
 
 test('pasa cada portal al formato común y aplica el prefiltro', () => {
-  const ofertas = normalizar([...remoteOk, getOnBoard, alerta], AHORA);
+  const ofertas = normalizar([...remoteOk, getOnBoard, alerta], AHORA, ['Trainee', 'Junior']);
   assert.deepStrictEqual(ofertas.map(o => o.titulo), ['Soporte técnico', 'Desarrollador Node', 'QA Tester']);
   assert.deepStrictEqual(ofertas[0], {
     fuente: 'RemoteOK', titulo: 'Soporte técnico', empresa: 'Uno', url: 'https://remoteok.com/1',
@@ -29,6 +29,12 @@ test('pasa cada portal al formato común y aplica el prefiltro', () => {
   });
   assert.strictEqual(ofertas[1].ubicacion, 'Remoto · Chile');
   assert.strictEqual(ofertas[1].empresa, 'Tres');
+});
+
+test('sin niveles elegidos no se descarta por nivel, y con niveles se descarta el que no coincide', () => {
+  assert.deepStrictEqual(normalizar(remoteOk, AHORA).map(o => o.titulo), ['Soporte técnico', 'Senior Developer']);
+  assert.deepStrictEqual(normalizar(remoteOk, AHORA, ['Senior']).map(o => o.titulo), ['Soporte técnico', 'Senior Developer']);
+  assert.deepStrictEqual(normalizar(remoteOk, AHORA, ['Junior']).map(o => o.titulo), ['Soporte técnico']);
 });
 
 test('descarta las repetidas, las que piden inglés avanzado y las que no aceptan LATAM', () => {

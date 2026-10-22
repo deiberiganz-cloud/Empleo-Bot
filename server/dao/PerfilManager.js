@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { normalizarPerfil, PERFIL_VACIO, perfilATexto, perfilVacio } from '../services/perfil.js'
+import { normalizarPerfil, nombreCvParaEnvio, PERFIL_VACIO, perfilATexto, perfilVacio } from '../services/perfil.js'
 
 // Los tipos de foto que se aceptan, con la extensión con la que se guardan.
 export const TIPOS_FOTO = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }
@@ -155,5 +155,21 @@ export class PerfilManager {
     rutaCvPredeterminado() {
         const fila = this.db.prepare('SELECT archivo FROM cvs WHERE predeterminado = 1').get()
         return fila ? this.#rutaDe(fila.archivo) : null
+    }
+
+    /**
+     * Copia el CV predeterminado a data/perfil/envio/ con su nombre original (sin tocar el guardado) y
+     * devuelve esa ruta: es la que se sube a los formularios, así el reclutador no ve "cv-1792512418469.pdf".
+     * Vacía la carpeta antes, para que ahí quede un solo archivo. Devuelve null si no hay CV predeterminado.
+     */
+    rutaCvParaEnvio() {
+        const fila = this.db.prepare('SELECT archivo, nombre_original FROM cvs WHERE predeterminado = 1').get()
+        if (!fila) return null
+        const carpetaEnvio = path.join(this.carpeta, 'envio')
+        fs.rmSync(carpetaEnvio, { recursive: true, force: true })
+        fs.mkdirSync(carpetaEnvio, { recursive: true })
+        const destino = path.join(carpetaEnvio, nombreCvParaEnvio(fila.nombre_original))
+        fs.copyFileSync(this.#rutaDe(fila.archivo), destino)
+        return destino
     }
 }

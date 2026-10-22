@@ -24,7 +24,7 @@ export function usePerfil() {
  * @returns el `perfil` en edición, `editar` para cambiarlo, si hay `cambios` sin guardar y `guardar`.
  * @example
  * const form = useFormularioPerfil(data.datos);
- * form.editar((p) => ({ ...p, titulo: "Dev Junior" }));
+ * form.editar((p) => ({ ...p, titulo: "Desarrollador Full Stack" }));
  */
 export function useFormularioPerfil(guardado: Perfil) {
   const [perfil, setPerfil] = useState(guardado);

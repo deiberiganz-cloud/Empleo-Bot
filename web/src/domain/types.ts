@@ -166,6 +166,8 @@ export interface Perfil {
     disponibilidad: string;
     seniority: string;
     noSirve: string;
+    /** Niveles que busca (ver NIVELES_BUSQUEDA). Vacío = todos. */
+    niveles: string[];
   };
   respuestas: { pregunta: string; respuesta: string }[];
 }

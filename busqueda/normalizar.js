@@ -1,7 +1,7 @@
 // Convierte la respuesta de cada portal al mismo formato y aplica el prefiltro (0 tokens):
-// fuera los avisos viejos, los puestos senior, los que piden inglés avanzado y los que no aceptan Argentina/LATAM.
+// fuera los avisos viejos, los de un nivel que el usuario no busca, los que piden inglés avanzado y los que no aceptan Argentina/LATAM.
+const { pasaNiveles } = require('./niveles');
 const limpiar = h => String(h || '').replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim();
-const SENIOR = /\b(senior|sr\.?|semi ?senior|ssr|lead|staff|principal|manager|director|head of|architect|arquitect[oa]|jefe|gerente)\b/i;
 const INGLES = /(fluent|advanced|excellent|native|proficient|strong|professional|business|c1|c2|b2)[^.]{0,25}english|english[^.]{0,20}(fluen|advanced|c1|c2|b2|required|proficien)|ingl[eé]s[^.]{0,15}(avanzado|fluido|intermedio|conversacional|c1|c2|b2|excluyente)|\(ingl[eé]s\)/i;
 const HISPANO = /spanish|español|espanol|latam|latin america|latinoam[eé]rica|argentina|south america|sudam[eé]rica|hispan/i;
 // Un aviso publicado hace más de esto probablemente ya está cubierto: ni se le muestra a Claude.
@@ -73,16 +73,17 @@ function aOfertas(j) {
  * Pasa las respuestas de todos los portales al formato común, saca las repetidas y aplica el prefiltro.
  * @param {object[]} respuestas lo que devolvió cada fuente (ver bajarFuentes en buscar.js)
  * @param {Date} ahora para calcular la antigüedad (los tests pasan una fecha fija)
+ * @param {string[]} niveles los niveles que busca el usuario (perfil.busqueda.niveles); vacío = todos
  * @returns {object[]} las ofertas que pasan el prefiltro
  */
-function normalizar(respuestas, ahora = new Date()) {
+function normalizar(respuestas, ahora = new Date(), niveles = []) {
   const vistas = new Set();
   return respuestas.flatMap(aOfertas).filter(o => {
     if (!o.url || vistas.has(o.url)) return false;
     vistas.add(o.url);
     if (esViejo(o.fecha, ahora)) return false;
     const texto = `${o.titulo} ${o.ubicacion} ${o.descripcion}`;
-    if (SENIOR.test(o.titulo) || INGLES.test(texto)) return false;
+    if (!pasaNiveles(o.titulo, niveles) || INGLES.test(texto)) return false;
     // Get on Board y las alertas de LinkedIn ya vienen filtradas para Argentina/LATAM.
     return o.fuente === 'Get on Board' || o.fuente === 'LinkedIn (alerta)' || HISPANO.test(texto);
   });

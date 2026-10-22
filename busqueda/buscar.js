@@ -1,7 +1,7 @@
 // Búsqueda completa de ofertas.
 // 1. Baja los 6 portales gratis, todos a la vez y cada uno por su lado: si uno no responde, los demás siguen.
 // 2. Suma las alertas de LinkedIn que llegan a Gmail.
-// 3. Normaliza y prefiltra sin IA (normalizar.js).
+// 3. Normaliza y prefiltra sin IA (normalizar.js), con los niveles que el usuario eligió en la pestaña Perfil.
 // 4. Guarda data/entrada.json y Claude evalúa las nuevas (evaluar.js), que anota la búsqueda en la base.
 // Uso: node busqueda/buscar.js   → imprime el resumen en JSON. La app lo corre sola cada 4 horas.
 const fs = require('fs');
@@ -128,16 +128,24 @@ async function bajarFuentes(fuentes) {
   return { respuestas, errores, respondieron: fuentes.length - errores.length };
 }
 
+// Los niveles que busca el usuario salen de la pestaña Perfil (la misma base que usa evaluar.js).
+async function nivelesDelPerfil() {
+  const { conectarDB } = await import('../server/config/db.js');
+  const { PerfilManager } = await import('../server/dao/PerfilManager.js');
+  return new PerfilManager(conectarDB()).obtener().datos.busqueda.niveles;
+}
+
 /**
  * Corre la búsqueda completa y devuelve el resumen de evaluar.js.
+ * `niveles` (opcional) pisa los del perfil; sin él se leen de la base.
  * Si no respondió ninguna fuente (por ejemplo, sin internet) lanza un error y no anota la búsqueda:
  * así la app lo vuelve a intentar en la próxima vuelta en vez de esperar 4 horas.
  */
-async function buscar({ fuentes = [...PORTALES, ALERTAS] } = {}) {
+async function buscar({ fuentes = [...PORTALES, ALERTAS], niveles } = {}) {
   const { respuestas, errores, respondieron } = await bajarFuentes(fuentes);
   if (respondieron === 0) throw new Error(`No respondió ninguna fuente. ${errores.join(' · ')}`);
 
-  const ofertas = normalizar(respuestas);
+  const ofertas = normalizar(respuestas, new Date(), niveles ?? await nivelesDelPerfil());
   fs.mkdirSync(path.dirname(ENTRADA), { recursive: true });
   fs.writeFileSync(ENTRADA, JSON.stringify(ofertas));
 

@@ -1,6 +1,8 @@
 // Reglas del perfil del candidato (la pestaña Perfil): cómo es un perfil válido y cómo se le
 // cuenta a Claude. Son funciones puras: no leen la base ni archivos, así se prueban fáciles.
 
+import { NIVELES } from '../../busqueda/niveles.js'
+
 const LARGO_MAXIMO = 4000
 const MAXIMO_ITEMS = 50
 
@@ -18,7 +20,7 @@ export const PERFIL_VACIO = Object.freeze({
     idiomas: [],
     busqueda: {
         puestos: [], modalidad: '', paises: '', sueldo: '', moneda: '',
-        disponibilidad: '', seniority: '', noSirve: '',
+        disponibilidad: '', seniority: '', noSirve: '', niveles: [],
     },
     respuestas: [],
 })
@@ -47,7 +49,9 @@ export const normalizarPerfil = datos => {
             .filter(exp => exp.titulo || exp.lugar),
         idiomas: lista(d.idiomas).map(idioma => soloCampos(idioma, ['idioma', 'nivel'])).filter(idioma => idioma.idioma),
         busqueda: {
-            ...soloCampos(d.busqueda, Object.keys(PERFIL_VACIO.busqueda).filter(campo => campo !== 'puestos')),
+            ...soloCampos(d.busqueda, Object.keys(PERFIL_VACIO.busqueda).filter(campo => campo !== 'puestos' && campo !== 'niveles')),
+            // Solo niveles conocidos y en su orden; un perfil viejo sin este campo queda en [] (todos los niveles).
+            niveles: NIVELES.filter(nivel => lista(d.busqueda?.niveles).includes(nivel)),
             puestos: lista(d.busqueda?.puestos).map(texto).filter(Boolean),
         },
         respuestas: lista(d.respuestas).map(r => soloCampos(r, ['pregunta', 'respuesta'])).filter(r => r.pregunta && r.respuesta),
@@ -57,6 +61,17 @@ export const normalizarPerfil = datos => {
 /** true si el perfil no tiene ni un dato cargado (todavía no se usó la pestaña). */
 export const perfilVacio = perfil =>
     JSON.stringify(normalizarPerfil(perfil)) === JSON.stringify(normalizarPerfil(PERFIL_VACIO))
+
+/**
+ * El nombre con el que se manda el CV a los reclutadores: el del archivo original, sin rutas ni
+ * caracteres que Windows no acepta. Si no queda nada, "CV.pdf".
+ * @param {unknown} nombreOriginal
+ */
+export const nombreCvParaEnvio = nombreOriginal => {
+    const base = String(nombreOriginal ?? '').split(/[\\/]/).pop()
+    const limpio = base.replace(/[\\/:*?"<>|\x00-\x1f]/g, '').trim().replace(/^\.+/, '').replace(/[. ]+$/, '')
+    return limpio || 'CV.pdf'
+}
 
 const periodo = exp => [exp.desde, exp.hasta].filter(Boolean).join(' – ')
 
@@ -102,14 +117,16 @@ export const perfilATexto = perfil => {
             linea('Sueldo pretendido', [busqueda.sueldo, busqueda.moneda].filter(Boolean).join(' ')),
             linea('Disponibilidad', busqueda.disponibilidad),
             linea('Seniority', busqueda.seniority),
+            linea('Niveles que busca', busqueda.niveles.length ? busqueda.niveles.join(', ') : 'Todos los niveles'),
         ]),
         seccion('Cuándo NO sirve', busqueda.noSirve ? [busqueda.noSirve] : []),
         seccion('Respuestas para formularios', p.respuestas.map(r => `- ${r.pregunta} → ${r.respuesta}`)),
         `## Cómo puntuar
-- **80-100:** calza casi completo con su experiencia y su seniority.
+- **80-100:** calza casi completo con su experiencia y con los niveles que busca.
 - **60-79:** calza en lo principal y vale la pena postular aunque falte alguna tecnología aprendible o algo de experiencia.
 - **40-59:** posible pero flojo (le faltan varias cosas pedidas).
 - **0-39:** no sirve (ver "Cuándo NO sirve").
-- Ante la duda, puntuar a favor de postular.`,
+- Ante la duda, puntuar a favor de postular.
+- No bajes el puntaje de un puesto solo por su nivel (junior, senior, lead...) si ese nivel está en "Niveles que busca".`,
     ].filter(Boolean).join('\n\n')
 }

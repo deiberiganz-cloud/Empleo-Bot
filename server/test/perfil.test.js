@@ -7,7 +7,7 @@ import { conectarDB } from '../config/db.js'
 import { OfertasManager } from '../dao/OfertasManager.js'
 import { PerfilManager } from '../dao/PerfilManager.js'
 import { crearApp } from '../crearApp.js'
-import { normalizarPerfil, perfilATexto, perfilVacio, PERFIL_VACIO } from '../services/perfil.js'
+import { nombreCvParaEnvio, normalizarPerfil, perfilATexto, perfilVacio, PERFIL_VACIO } from '../services/perfil.js'
 import { armarPrompt } from '../services/postulador-prompt.js'
 
 const PDF = Buffer.from('%PDF-1.4 prueba')
@@ -66,6 +66,29 @@ describe('perfil (reglas puras)', () => {
     })
 })
 
+describe('perfil: niveles y nombre del CV', () => {
+    test('un perfil viejo sin niveles se lee como [] y los desconocidos se descartan', () => {
+        assert.deepEqual(normalizarPerfil({ busqueda: { puestos: ['QA'] } }).busqueda.niveles, [])
+        assert.deepEqual(PERFIL_VACIO.busqueda.niveles, [])
+        const limpio = normalizarPerfil({ busqueda: { niveles: ['Senior', 'Junior', 'Dios', 'Junior'] } })
+        assert.deepEqual(limpio.busqueda.niveles, ['Junior', 'Senior'])
+    })
+
+    test('perfilATexto dice los niveles que busca, o que son todos', () => {
+        assert.match(perfilATexto({ ...perfilDePrueba(), busqueda: { niveles: ['Junior', 'Semi senior'] } }), /Niveles que busca: Junior, Semi senior/)
+        assert.match(perfilATexto(perfilDePrueba()), /Niveles que busca: Todos los niveles/)
+    })
+
+    test('nombreCvParaEnvio saca rutas y caracteres prohibidos, y usa CV.pdf si no queda nada', () => {
+        assert.equal(nombreCvParaEnvio('Ana Pérez - CV.pdf'), 'Ana Pérez - CV.pdf')
+        assert.equal(nombreCvParaEnvio('C:' + String.fromCharCode(92) + 'Users' + String.fromCharCode(92) + 'ana' + String.fromCharCode(92) + 'cv.pdf'), 'cv.pdf')
+        assert.equal(nombreCvParaEnvio('../../etc/cv.pdf'), 'cv.pdf')
+        assert.equal(nombreCvParaEnvio('a:b*c?d"e<f>g|h.pdf'), 'abcdefgh.pdf')
+        assert.equal(nombreCvParaEnvio('..pdf. '), 'pdf')
+        for (const vacio of ['', '   ', '...', '???', undefined, null]) assert.equal(nombreCvParaEnvio(vacio), 'CV.pdf')
+    })
+})
+
 describe('PerfilManager', () => {
     let manager
     let carpeta
@@ -100,6 +123,24 @@ describe('PerfilManager', () => {
         manager.quitarCv(segundo.id)
         assert.equal(fs.existsSync(path.join(carpeta, segundo.archivo)), false)
         assert.equal(manager.obtenerCv(primero.id).predeterminado, true)
+    })
+
+    test('rutaCvParaEnvio copia el CV predeterminado con su nombre original y deja la carpeta con un solo archivo', () => {
+        assert.equal(manager.rutaCvParaEnvio(), null)
+        const primero = manager.agregarCv({ contenido: PDF, nombreOriginal: 'Ana Pérez - CV.pdf' }, new Date('2026-10-01'))
+        const segundo = manager.agregarCv({ contenido: Buffer.from('%PDF-1.4 otro'), nombreOriginal: 'CV Soporte.pdf' }, new Date('2026-10-02'))
+
+        const ruta = manager.rutaCvParaEnvio()
+        assert.equal(ruta, path.join(carpeta, 'envio', 'Ana Pérez - CV.pdf'))
+        assert.deepEqual(fs.readFileSync(ruta), PDF)
+
+        manager.marcarPredeterminado(segundo.id)
+        const otra = manager.rutaCvParaEnvio()
+        assert.equal(path.basename(otra), 'CV Soporte.pdf')
+        assert.deepEqual(fs.readdirSync(path.join(carpeta, 'envio')), ['CV Soporte.pdf'])
+        // Los archivos guardados no se tocan.
+        assert.equal(fs.existsSync(path.join(carpeta, primero.archivo)), true)
+        assert.equal(fs.existsSync(path.join(carpeta, segundo.archivo)), true)
     })
 
     test('cambiar la foto borra la anterior', () => {

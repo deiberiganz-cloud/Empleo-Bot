@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { urlFoto } from "../../api/perfilApi";
-import { mover, NIVELES_IDIOMA, quitar, reemplazar } from "../../domain/perfil";
+import { mover, NIVELES_BUSQUEDA, NIVELES_IDIOMA, quitar, reemplazar } from "../../domain/perfil";
 import type { Perfil } from "../../domain/types";
 import { AreaTexto, Campo, Seccion } from "./Campos";
 
@@ -14,7 +14,7 @@ interface SeccionPerfilProps {
 const MODALIDADES = ["Solo remoto", "Remoto o híbrido", "Cualquiera"];
 const MONEDAS = ["ARS · mensual bruto", "USD · mensual bruto", "USD · por hora"];
 const DISPONIBILIDADES = ["Inmediata", "En 15 días", "En 30 días"];
-const SENIORITIES = ["Sin experiencia / trainee", "Junior", "Semi senior", "Senior"];
+const SENIORITIES = NIVELES_BUSQUEDA;
 
 /** Un desplegable que también muestra el valor guardado aunque no esté en las opciones. */
 function Opciones({ etiqueta, valor, opciones, onCambiar }: { etiqueta: string; valor: string; opciones: string[]; onCambiar: (valor: string) => void }) {
@@ -151,7 +151,7 @@ export function SeccionLinks({ perfil, editar }: SeccionPerfilProps) {
 export function SeccionResumen({ perfil, editar }: SeccionPerfilProps) {
   return (
     <Seccion numero={4} titulo="Resumen y habilidades">
-      <Campo etiqueta="Título profesional" placeholder="Desarrollador Junior" valor={perfil.titulo} onCambiar={(titulo) => editar((p) => ({ ...p, titulo }))} />
+      <Campo etiqueta="Título profesional" placeholder="Desarrollador Full Stack" valor={perfil.titulo} onCambiar={(titulo) => editar((p) => ({ ...p, titulo }))} />
       <AreaTexto
         etiqueta='Presentación corta (para "Cuéntanos de ti")'
         valor={perfil.presentacion}
@@ -221,12 +221,14 @@ export function SeccionIdiomas({ perfil, editar }: SeccionPerfilProps) {
 /* ---- 7. Qué busco ---- */
 export function SeccionBusqueda({ perfil, editar }: SeccionPerfilProps) {
   const { busqueda } = perfil;
-  const dato = (campo: Exclude<keyof Perfil["busqueda"], "puestos">) => ({
+  const dato = (campo: Exclude<keyof Perfil["busqueda"], "puestos" | "niveles">) => ({
     valor: busqueda[campo],
     onCambiar: (valor: string) => editar((p) => ({ ...p, busqueda: { ...p.busqueda, [campo]: valor } })),
   });
   const cambiarPuestos = (cambio: (puestos: string[]) => string[]) =>
     editar((p) => ({ ...p, busqueda: { ...p.busqueda, puestos: cambio(p.busqueda.puestos) } }));
+
+  const cambiarNiveles = (niveles: string[]) => editar((p) => ({ ...p, busqueda: { ...p.busqueda, niveles } }));
 
   return (
     <Seccion numero={7} titulo="Qué busco">
@@ -255,13 +257,34 @@ export function SeccionBusqueda({ perfil, editar }: SeccionPerfilProps) {
         <AgregarTexto etiqueta="Nuevo puesto" placeholder="Soporte técnico en español" onAgregar={(puesto) => cambiarPuestos((lista) => [...lista, puesto])} />
       </div>
 
+      <div className="perfil__campo">
+        Niveles que buscas
+        <div className="perfil__chips" role="group" aria-label="Niveles que buscas">
+          {NIVELES_BUSQUEDA.map((nivel) => {
+            const marcado = busqueda.niveles.includes(nivel);
+            return (
+              <button
+                key={nivel}
+                type="button"
+                className={`perfil__nivel${marcado ? " perfil__nivel--activo" : ""}`}
+                aria-pressed={marcado}
+                onClick={() => cambiarNiveles(marcado ? busqueda.niveles.filter((n) => n !== nivel) : [...busqueda.niveles, nivel])}
+              >
+                {nivel}
+              </button>
+            );
+          })}
+        </div>
+        <p className="perfil__ayuda">Sin marcar = todos los niveles. Los avisos que no dicen nivel siempre pasan.</p>
+      </div>
+
       <div className="perfil__grilla">
         <Opciones etiqueta="Modalidad" opciones={MODALIDADES} {...dato("modalidad")} />
         <Campo etiqueta="Países que aceptas" placeholder="Argentina, Latam, España" {...dato("paises")} />
         <Campo etiqueta="Sueldo pretendido" placeholder="1.800.000" {...dato("sueldo")} />
         <Opciones etiqueta="Moneda y período" opciones={MONEDAS} {...dato("moneda")} />
         <Opciones etiqueta="Disponibilidad" opciones={DISPONIBILIDADES} {...dato("disponibilidad")} />
-        <Opciones etiqueta="Seniority" opciones={SENIORITIES} {...dato("seniority")} />
+        <Opciones etiqueta="Tu seniority" opciones={SENIORITIES} {...dato("seniority")} />
       </div>
       <AreaTexto
         etiqueta="Cuándo NO te sirve una oferta"

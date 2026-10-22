@@ -22,7 +22,7 @@ const postulador = crearPostulador({
     manager,
     leerContexto: () => ({
         perfil: leerPerfil(),
-        rutaCv: perfilManager.rutaCvPredeterminado(),
+        rutaCv: perfilManager.rutaCvParaEnvio(),
         nombre: perfilManager.obtener().datos.personales.nombre || undefined,
     }),
 })

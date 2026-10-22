@@ -1065,6 +1065,24 @@ button {
   background: var(--page);
 }
 
+.perfil__nivel {
+  font: inherit;
+  font-size: 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 14px;
+  min-height: 36px;
+  cursor: pointer;
+  color: var(--text-primary);
+  background: var(--page);
+}
+
+.perfil__nivel--activo {
+  border-color: var(--status-good);
+  color: var(--status-good-text);
+  font-weight: 700;
+}
+
 .perfil__chip-quitar {
   border: none;
   background: none;

@@ -29,9 +29,13 @@ export const PERFIL_VACIO: Perfil = {
     disponibilidad: "",
     seniority: "",
     noSirve: "",
+    niveles: [],
   },
   respuestas: [],
 };
+
+/** Los niveles de seniority (el mismo orden y texto que busqueda/niveles.js). */
+export const NIVELES_BUSQUEDA = ["Trainee", "Junior", "Semi senior", "Senior", "Lead / Staff", "Principal / Gerencia"];
 
 export const NIVELES_IDIOMA = [
   "Nativo",

@@ -44,6 +44,24 @@ describe("PerfilPage", () => {
     expect(screen.getByText(/sin CV no se puede postular/)).toBeInTheDocument();
   });
 
+  test("los niveles que buscas se marcan, se desmarcan y se mandan al guardar", async () => {
+    const fetchFalso = simularApi(respuesta());
+    mostrar();
+    const junior = await screen.findByRole("button", { name: "Junior" });
+    expect(junior).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByText(/Sin marcar = todos los niveles/)).toBeInTheDocument();
+
+    await userEvent.click(junior);
+    await userEvent.click(screen.getByRole("button", { name: "Senior" }));
+    await userEvent.click(screen.getByRole("button", { name: "Senior" }));
+    expect(junior).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(screen.getAllByRole("button", { name: "Guardar cambios" })[0]);
+
+    await waitFor(() => expect(screen.getByText("Guardado ✓")).toBeInTheDocument());
+    const put = fetchFalso.mock.calls.find(([, opciones]) => opciones?.method === "PUT");
+    expect(JSON.parse(String(put?.[1]?.body)).busqueda.niveles).toEqual(["Junior"]);
+  });
+
   test("Guardar cambios se habilita al editar y manda el perfil entero", async () => {
     const fetchFalso = simularApi(respuesta());
     mostrar();
